@@ -16,6 +16,7 @@ Panel {
   property string profile: ""
   property string gpuMode: ""
   property string runtime: ""
+  property string dgpuName: ""
   property string keyboard: ""
   property string auraMode: "static"
   property string selectedAuraColor: "ff2244"
@@ -128,7 +129,8 @@ Panel {
       var value = JSON.parse(raw)
       root.profile = value.profile || ""
       root.gpuMode = value.gpu_mode || ""
-      root.runtime = value.nvidia_runtime || ""
+      root.runtime = value.dgpu_runtime || value.nvidia_runtime || ""
+      root.dgpuName = value.dgpu_name || ""
       root.keyboard = value.keyboard_brightness || ""
       root.auraMode = value.aura_mode || root.auraMode
       var firmwareColor = root.normalizedColor(value.aura_color)
@@ -271,7 +273,10 @@ Panel {
             width: parent.width
             spacing: Style.space(18)
 
-            InfoPair { label: "NVIDIA"; value: root.runtime || "—" }
+            InfoPair {
+              label: "dGPU" + (root.runtime ? " · " + root.runtime : "")
+              value: root.dgpuName || "—"
+            }
             InfoPair { label: "Keyboard"; value: root.keyboard || "—" }
           }
 

@@ -143,25 +143,68 @@ slash_enabled() {
   printf '%s' "${enabled:-unknown}"
 }
 
-nvidia_runtime() {
-  local device vendor
+dgpu_slot() {
+  local device class boot vendor
   for device in /sys/bus/pci/devices/*; do
-    [[ -r "$device/vendor" ]] || continue
-    vendor=$(tr -d '[:space:]' < "$device/vendor")
-    [[ "$vendor" == 0x10de ]] || continue
-    read_value "$device/power/runtime_status"
-    return
+    [[ -r "$device/class" ]] || continue
+    class=$(tr -d '[:space:]' < "$device/class")
+    [[ "$class" == 0x03* ]] || continue
+    boot=$(read_value "$device/boot_vga")
+    if [[ "$boot" == 0 ]]; then
+      basename "$device"
+      return
+    fi
   done
-  printf 'unknown'
+
+  # ASUS ROG laptops with an NVIDIA dGPU retain the PCI function even when
+  # it is runtime-suspended, so prefer it as a useful fallback.
+  for device in /sys/bus/pci/devices/*; do
+    [[ -r "$device/vendor" && -r "$device/class" ]] || continue
+    vendor=$(tr -d '[:space:]' < "$device/vendor")
+    class=$(tr -d '[:space:]' < "$device/class")
+    if [[ "$vendor" == 0x10de && "$class" == 0x03* ]]; then
+      basename "$device"
+      return
+    fi
+  done
+}
+
+dgpu_name() {
+  local slot name
+  slot=$(dgpu_slot || true)
+  [[ -n "$slot" ]] || { printf 'Discrete GPU'; return; }
+  command -v lspci >/dev/null 2>&1 || { printf 'Discrete GPU'; return; }
+  name=$(lspci -Dmmnn -s "$slot" 2>/dev/null | awk -F '"' '
+    /"VGA compatible controller|3D controller|Display controller/ {
+      model = $6
+      sub(/[[:space:]]+\[[[:xdigit:]]+\]$/, "", model)
+      if (match(model, /\[[^]]+\]/))
+        print substr(model, RSTART + 1, RLENGTH - 2)
+      else {
+        gsub(/^[[:space:]]+|[[:space:]]+$/, "", model)
+        print model
+      }
+      exit
+    }
+  ')
+  printf '%s' "${name:-Discrete GPU}"
+}
+
+dgpu_runtime() {
+  local slot
+  slot=$(dgpu_slot || true)
+  [[ -n "$slot" ]] || { printf 'unknown'; return; }
+  read_value "/sys/bus/pci/devices/$slot/power/runtime_status"
 }
 
 status_json() {
-  local profile mode disabled mux runtime keyboard aura colour slash brightness enabled
+  local profile mode disabled mux runtime dgpu keyboard aura colour slash brightness enabled
   profile=$(profile_name)
   mode=$(gpu_mode)
   disabled=$(sysfs_value dgpu_disable)
   mux=$(sysfs_value gpu_mux_mode)
-  runtime=$(nvidia_runtime)
+  runtime=$(dgpu_runtime)
+  dgpu=$(dgpu_name)
   keyboard=$(keyboard_level)
   aura=$(aura_mode_name)
   colour=$(aura_color)
@@ -174,13 +217,14 @@ status_json() {
     --arg disabled "$disabled" \
     --arg mux "$mux" \
     --arg runtime "$runtime" \
+    --arg dgpu "$dgpu" \
     --arg keyboard "$keyboard" \
     --arg aura_mode "$aura" \
     --arg aura_color "$colour" \
     --arg slash_mode "$slash" \
     --arg slash_brightness "$brightness" \
     --arg slash_enabled "$enabled" \
-    '{profile:$profile,gpu_mode:$mode,dgpu_disable:$disabled,gpu_mux_mode:$mux,nvidia_runtime:$runtime,keyboard_brightness:$keyboard,aura_mode:$aura_mode,aura_color:$aura_color,slash_mode:$slash_mode,slash_brightness:$slash_brightness,slash_enabled:$slash_enabled}'
+    '{profile:$profile,gpu_mode:$mode,dgpu_disable:$disabled,gpu_mux_mode:$mux,dgpu_name:$dgpu,dgpu_runtime:$runtime,nvidia_runtime:$runtime,keyboard_brightness:$keyboard,aura_mode:$aura_mode,aura_color:$aura_color,slash_mode:$slash_mode,slash_brightness:$slash_brightness,slash_enabled:$slash_enabled}'
 }
 
 set_profile() {

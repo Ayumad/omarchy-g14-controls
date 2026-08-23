@@ -31,7 +31,7 @@ remain hidden rather than being emulated.
 
 - Omarchy Quattro and its Quickshell shell
 - `asusd` running with `asusctl` and `rog-control-center` installed
-- `jq` for status serialization
+- `jq` for status serialization and `pciutils` (`lspci`) for dGPU model detection
 - ASUS WMI support for the controls exposed by the specific laptop
 
 The bundled `g14ctl` helper runs with the logged-in user's permissions and

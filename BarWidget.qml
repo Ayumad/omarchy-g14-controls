@@ -10,6 +10,7 @@ BarWidget {
   property string profile: ""
   property string gpuMode: ""
   property string runtime: ""
+  property string dgpuName: ""
   property string keyboard: ""
   readonly property string rogLogoSource: "file:///usr/share/icons/hicolor/512x512/apps/rog-control-center.png"
   readonly property string configHome: Quickshell.env("XDG_CONFIG_HOME") || (Quickshell.env("HOME") + "/.config")
@@ -64,9 +65,10 @@ BarWidget {
 
   function graphicsTooltip() {
     var mode = root.gpuMode || "unknown"
-    if (root.runtime === "suspended") return "GPU: " + mode + " · dGPU asleep"
-    if (root.runtime) return "GPU: " + mode + " · NVIDIA " + root.runtime
-    return "GPU: " + mode
+    var name = root.dgpuName || "dGPU"
+    if (root.runtime === "suspended") return name + " · " + mode + " · asleep"
+    if (root.runtime) return name + " · " + mode + " · " + root.runtime
+    return name + " · " + mode
   }
 
   function runAction(args) {
@@ -93,7 +95,8 @@ BarWidget {
           var value = JSON.parse(text)
           root.profile = value.profile || ""
           root.gpuMode = value.gpu_mode || ""
-          root.runtime = value.nvidia_runtime || ""
+          root.runtime = value.dgpu_runtime || value.nvidia_runtime || ""
+          root.dgpuName = value.dgpu_name || ""
           root.keyboard = value.keyboard_brightness || ""
         } catch (error) {}
       }
