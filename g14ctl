@@ -12,6 +12,35 @@ notify() {
   fi
 }
 
+# Profile cycling can be triggered quickly from the hardware key.  Keep one
+# notification per login session and replace its contents on every change.
+profile_notification_file="${XDG_RUNTIME_DIR:-/tmp}/g14ctl-profile-notification-${UID}"
+
+notify_profile() {
+  local replace_id="" notification_id=""
+  [[ -r "$profile_notification_file" ]] && read -r replace_id < "$profile_notification_file" || true
+
+  if command -v omarchy-notification-send >/dev/null 2>&1; then
+    if [[ "$replace_id" =~ ^[1-9][0-9]*$ ]]; then
+      notification_id=$(omarchy-notification-send -g  "G14" "$*" -r "$replace_id" -p 2>/dev/null || true)
+    else
+      notification_id=$(omarchy-notification-send -g  "G14" "$*" -p 2>/dev/null || true)
+    fi
+  elif command -v notify-send >/dev/null 2>&1; then
+    if [[ "$replace_id" =~ ^[1-9][0-9]*$ ]]; then
+      notification_id=$(notify-send -p -r "$replace_id" "G14" "$*" 2>/dev/null || true)
+    else
+      notification_id=$(notify-send -p "G14" "$*" 2>/dev/null || true)
+    fi
+  fi
+
+  if [[ "$notification_id" =~ ^[1-9][0-9]*$ ]]; then
+    (umask 077; printf '%s\n' "$notification_id" > "$profile_notification_file") 2>/dev/null || true
+  else
+    notify "$@"
+  fi
+}
+
 die() {
   printf 'g14ctl: %s\n' "$*" >&2
   exit 2
@@ -235,19 +264,19 @@ set_profile() {
     performance|Performance) profile="Performance" ;;
     next|cycle)
       "$asusctl_bin" profile next
-      notify "Profile: $(profile_name)"
+      notify_profile "Profile: $(profile_name)"
       return
       ;;
     adaptive)
       "$asusctl_bin" profile set --ac Balanced
       "$asusctl_bin" profile set --battery Quiet
-      notify "Adaptive profiles: AC Balanced / battery Quiet"
+      notify_profile "Adaptive profiles: AC Balanced / battery Quiet"
       return
       ;;
     *) die "profile must be quiet, balanced, performance, next, or adaptive" ;;
   esac
   "$asusctl_bin" profile set "$profile"
-  notify "Profile: $profile"
+  notify_profile "Profile: $profile"
 }
 
 set_graphics() {
