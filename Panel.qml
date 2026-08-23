@@ -84,7 +84,7 @@ Panel {
       id: actionStderr
       waitForEnd: true
     }
-    onExited: {
+    onExited: function(exitCode, exitStatus) {
       if (exitCode === 0) {
         root.message = "Applied"
         root.errorMessage = ""
