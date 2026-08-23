@@ -19,7 +19,9 @@ Panel {
   property bool adaptive: false
   property string gpuMode: ""
   property string gpuPending: ""
+  property string gpuTargetMode: ""
   property string runtime: ""
+  property string gpuName: ""
   property string dgpuName: ""
   property string keyboard: ""
   property string auraMode: "static"
@@ -166,6 +168,17 @@ Panel {
     return String(mode || "").toUpperCase()
   }
 
+  function displayedGpuMode() {
+    return root.gpuTargetMode || root.gpuPending || root.gpuMode || "unknown"
+  }
+
+  function displayedGraphicsLabel() {
+    var label = root.graphicsLabel(root.displayedGpuMode())
+    if (root.gpuPending && root.gpuMode && root.gpuMode !== root.gpuPending)
+      return root.graphicsLabel(root.gpuMode) + " → " + label + " · QUEUED"
+    return root.gpuPending ? label + " · QUEUED" : label
+  }
+
   function queueGraphics(mode) {
     root.previousGpuPending = root.gpuPending
     root.gpuPending = String(mode)
@@ -210,7 +223,7 @@ Panel {
 
   function initialCursorIndex() {
     if (root.view === "graphics") {
-      var gpuIndex = root.gpuChoices.indexOf(root.gpuMode)
+      var gpuIndex = root.gpuChoices.indexOf(root.displayedGpuMode())
       return gpuIndex >= 0 ? gpuIndex : 0
     }
     return root.activeProfileIndex()
@@ -355,7 +368,9 @@ Panel {
       root.adaptive = value.adaptive === true
       root.gpuMode = value.gpu_mode || ""
       root.gpuPending = value.gpu_pending || ""
+      root.gpuTargetMode = value.gpu_target_mode || root.gpuPending || root.gpuMode
       root.runtime = value.dgpu_runtime || value.nvidia_runtime || ""
+      root.gpuName = value.gpu_name || ""
       root.dgpuName = value.dgpu_name || ""
       root.keyboard = value.keyboard_brightness || ""
       root.auraMode = value.aura_mode || root.auraMode
@@ -522,7 +537,7 @@ Panel {
               }
 
               Text {
-                text: (root.profile || "Unknown") + " · " + (root.gpuMode || "Unknown")
+                text: (root.profile || "Unknown") + " · " + root.displayedGraphicsLabel()
                 color: root.contentForeground
                 opacity: 0.65
                 font.family: root.contentFontFamily
@@ -539,8 +554,10 @@ Panel {
             spacing: Style.space(18)
 
             InfoPair {
-              label: "dGPU" + (root.runtime ? " · " + root.runtime : "")
-              value: root.dgpuName || "—"
+              label: "GPU"
+                + (root.gpuPending ? " · reboot required" : "")
+                + (root.runtime ? " · dGPU " + root.runtime : "")
+              value: root.gpuName || root.dgpuName || "—"
             }
             InfoPair { label: "Keyboard"; value: root.keyboard || "—" }
           }

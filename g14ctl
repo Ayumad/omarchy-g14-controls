@@ -314,11 +314,10 @@ dgpu_slot() {
   done
 }
 
-dgpu_name() {
-  local slot name
-  slot=$(dgpu_slot || true)
-  [[ -n "$slot" ]] || { printf 'Discrete GPU'; return; }
-  command -v lspci >/dev/null 2>&1 || { printf 'Discrete GPU'; return; }
+gpu_name_for_slot() {
+  local slot="$1" name
+  [[ -n "$slot" ]] || return 1
+  command -v lspci >/dev/null 2>&1 || return 1
   name=$(lspci -Dmmnn -s "$slot" 2>/dev/null | awk -F '"' '
     /"VGA compatible controller|3D controller|Display controller/ {
       model = $6
@@ -332,7 +331,79 @@ dgpu_name() {
       exit
     }
   ')
+  [[ -n "$name" ]] || return 1
+  printf '%s' "$name"
+}
+
+dgpu_name() {
+  local slot name
+  slot=$(dgpu_slot || true)
+  name=$(gpu_name_for_slot "$slot" || true)
   printf '%s' "${name:-Discrete GPU}"
+}
+
+igpu_slot() {
+  local dgpu device class boot vendor
+  dgpu=$(dgpu_slot || true)
+
+  # The integrated adapter is normally the boot VGA device. Do not select
+  # the dGPU even when firmware leaves boot_vga unset on the iGPU.
+  for device in /sys/bus/pci/devices/*; do
+    [[ -r "$device/class" ]] || continue
+    class=$(tr -d '[:space:]' < "$device/class")
+    [[ "$class" == 0x03* ]] || continue
+    [[ "$(basename "$device")" != "$dgpu" ]] || continue
+    boot=$(read_value "$device/boot_vga")
+    if [[ "$boot" == 1 ]]; then
+      basename "$device"
+      return
+    fi
+  done
+
+  # Some ASUS AMD iGPUs do not expose boot_vga. Prefer a non-NVIDIA graphics
+  # adapter, which is the integrated Radeon on supported G14 configurations.
+  for device in /sys/bus/pci/devices/*; do
+    [[ -r "$device/vendor" && -r "$device/class" ]] || continue
+    class=$(tr -d '[:space:]' < "$device/class")
+    vendor=$(tr -d '[:space:]' < "$device/vendor")
+    [[ "$class" == 0x03* && "$vendor" != 0x10de ]] || continue
+    [[ "$(basename "$device")" != "$dgpu" ]] || continue
+    basename "$device"
+    return
+  done
+}
+
+igpu_name() {
+  local slot name
+  slot=$(igpu_slot || true)
+  name=$(gpu_name_for_slot "$slot" || true)
+  printf '%s' "${name:-Integrated GPU}"
+}
+
+gpu_name_for_mode() {
+  local mode="$1" integrated discrete
+  case "$mode" in
+    integrated)
+      igpu_name
+      ;;
+    ultimate)
+      dgpu_name
+      ;;
+    hybrid)
+      integrated=$(igpu_name)
+      discrete=$(dgpu_name)
+      if [[ "$integrated" == "Integrated GPU" ]]; then
+        printf '%s' "$discrete"
+      elif [[ "$discrete" == "Discrete GPU" ]]; then
+        printf '%s' "$integrated"
+      else
+        printf '%s + %s' "$integrated" "$discrete"
+      fi
+      ;;
+    *)
+      printf 'GPU'
+      ;;
+  esac
 }
 
 dgpu_runtime() {
@@ -343,15 +414,18 @@ dgpu_runtime() {
 }
 
 status_json() {
-  local profile adaptive mode pending disabled mux runtime dgpu keyboard aura colour aura_locked slash brightness enabled
+  local profile adaptive mode pending target disabled mux runtime dgpu igpu gpu keyboard aura colour aura_locked slash brightness enabled
   profile=$(profile_name)
   adaptive=$(adaptive_profile_enabled)
   mode=$(gpu_mode)
   pending=$(gpu_pending_mode)
+  target="${pending:-$mode}"
   disabled=$(sysfs_value dgpu_disable)
   mux=$(sysfs_value gpu_mux_mode)
   runtime=$(dgpu_runtime)
   dgpu=$(dgpu_name)
+  igpu=$(igpu_name)
+  gpu=$(gpu_name_for_mode "$target")
   keyboard=$(keyboard_level)
   aura=$(aura_mode_name)
   colour=$(aura_color)
@@ -364,10 +438,13 @@ status_json() {
     --argjson adaptive "$adaptive" \
     --arg mode "$mode" \
     --arg gpu_pending "$pending" \
+    --arg gpu_target "$target" \
     --arg disabled "$disabled" \
     --arg mux "$mux" \
     --arg runtime "$runtime" \
     --arg dgpu "$dgpu" \
+    --arg igpu "$igpu" \
+    --arg gpu "$gpu" \
     --arg keyboard "$keyboard" \
     --arg aura_mode "$aura" \
     --arg aura_color "$colour" \
@@ -375,7 +452,7 @@ status_json() {
     --arg slash_mode "$slash" \
     --arg slash_brightness "$brightness" \
     --arg slash_enabled "$enabled" \
-    '{profile:$profile,adaptive:$adaptive,gpu_mode:$mode,gpu_pending:$gpu_pending,dgpu_disable:$disabled,gpu_mux_mode:$mux,dgpu_name:$dgpu,dgpu_runtime:$runtime,nvidia_runtime:$runtime,keyboard_brightness:$keyboard,aura_mode:$aura_mode,aura_color:$aura_color,aura_locked:$aura_locked,slash_mode:$slash_mode,slash_brightness:$slash_brightness,slash_enabled:$slash_enabled}'
+    '{profile:$profile,adaptive:$adaptive,gpu_mode:$mode,gpu_pending:$gpu_pending,gpu_target_mode:$gpu_target,gpu_name:$gpu,igpu_name:$igpu,dgpu_name:$dgpu,dgpu_disable:$disabled,gpu_mux_mode:$mux,dgpu_runtime:$runtime,nvidia_runtime:$runtime,keyboard_brightness:$keyboard,aura_mode:$aura_mode,aura_color:$aura_color,aura_locked:$aura_locked,slash_mode:$slash_mode,slash_brightness:$slash_brightness,slash_enabled:$slash_enabled}'
 }
 
 set_profile() {

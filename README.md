@@ -21,10 +21,11 @@ color range rather than a UI theme color.
 
 ## Features
 
-- **Live status glyphs** — focused tooltips show the current profile, detected
-  dGPU model, graphics mode, and runtime state. An expansion-card glyph appears
-  while the dGPU is active; the microchip glyph represents integrated or
-  sleeping Hybrid states.
+- **Live status glyphs** — focused tooltips show the current or queued graphics
+  target, the GPU model selected by that mode, and dGPU runtime state. The
+  expansion-card glyph represents Ultimate; the microchip glyph represents
+  Integrated and Hybrid, so transient dGPU wakeups do not make the glyph
+  oscillate.
 - **Focused glyph panels** — select the profile or GPU glyph to open only its
   power or graphics controls, anchored directly below that glyph. The ROG mark
   always opens the complete panel. Compact profile controls use glyphs with
@@ -41,9 +42,10 @@ color range rather than a UI theme color.
 - **Slash Lighting** — firmware-provided Slash modes, brightness levels, and
   explicit On/Off controls, shown in Advanced controls when supported.
 - **Graphics/MUX controls** — Integrated, Hybrid, and Ultimate/dGPU modes.
-  Selecting a mode queues the ASUS firmware change immediately and highlights
-  the queued target until the next reboot applies it; the running session is
-  left alone.
+  Selecting a mode queues the ASUS firmware change immediately, switches the
+  bar/panel to the queued target, and highlights it until the next reboot
+  applies it; the running session is left alone. Integrated mode reports the
+  detected Radeon/Intel adapter instead of repeating the NVIDIA dGPU name.
 - **Hardware-key ready** — the README includes the ROG-key binding; the panel
   also supports left-click to open, right-click to cycle profiles, and
   middle-click to refresh.
@@ -83,7 +85,7 @@ emulated.
 
 - Omarchy Quattro and its Quickshell shell
 - `asusd` running with `asusctl` and `rog-control-center` installed
-- `jq` for status serialization and `pciutils` (`lspci`) for dGPU model detection
+- `jq` for status serialization and `pciutils` (`lspci`) for GPU model detection
 - ASUS WMI support for the controls exposed by the specific laptop
 - `wev` (optional, only for the G14 key-capture action)
 

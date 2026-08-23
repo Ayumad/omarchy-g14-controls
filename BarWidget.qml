@@ -11,7 +11,10 @@ BarWidget {
   property string profile: ""
   property bool adaptive: false
   property string gpuMode: ""
+  property string gpuPending: ""
+  property string gpuTargetMode: ""
   property string runtime: ""
+  property string gpuName: ""
   property string dgpuName: ""
   property string keyboard: ""
   property var panelAnchor: null
@@ -54,9 +57,10 @@ BarWidget {
   }
 
   function gpuGlyph() {
-    // A full-size discrete card is visually distinct from the low-power
-    // integrated/sleeping state, even while Hybrid mode is selected.
-    return root.gpuMode.toLowerCase() === "ultimate" || root.runtime === "active" ? "󰢮" : ""
+    // Follow the selected firmware mode, or its queued reboot target. Runtime
+    // activity is intentionally not used here: Hybrid mode wakes the dGPU for
+    // individual applications and must not make the bar glyph oscillate.
+    return (root.gpuTargetMode || root.gpuPending || root.gpuMode).toLowerCase() === "ultimate" ? "󰢮" : ""
   }
 
   function openView(view, anchor) {
@@ -103,11 +107,14 @@ BarWidget {
   }
 
   function graphicsTooltip() {
-    var mode = root.gpuMode || "unknown"
-    var name = root.dgpuName || "dGPU"
-    if (root.runtime === "suspended") return name + " · " + mode + " · asleep"
-    if (root.runtime) return name + " · " + mode + " · " + root.runtime
-    return name + " · " + mode
+    var mode = (root.gpuTargetMode || root.gpuPending || root.gpuMode || "unknown").toUpperCase()
+    var name = root.gpuName || root.dgpuName || "GPU"
+    var pending = root.gpuPending ? " · queued · reboot required" : ""
+    var current = root.gpuMode && root.gpuMode.toUpperCase() !== mode
+      ? " · running " + root.gpuMode.toUpperCase()
+      : ""
+    var runtime = root.runtime ? " · dGPU " + root.runtime : ""
+    return name + " · " + mode + pending + current + runtime
   }
 
   function glyphIsActive(button) {
@@ -139,7 +146,10 @@ BarWidget {
           root.profile = value.profile || ""
           root.adaptive = value.adaptive === true
           root.gpuMode = value.gpu_mode || ""
+          root.gpuPending = value.gpu_pending || ""
+          root.gpuTargetMode = value.gpu_target_mode || root.gpuPending || root.gpuMode
           root.runtime = value.dgpu_runtime || value.nvidia_runtime || ""
+          root.gpuName = value.gpu_name || ""
           root.dgpuName = value.dgpu_name || ""
           root.keyboard = value.keyboard_brightness || ""
         } catch (error) {}
