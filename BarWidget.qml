@@ -32,15 +32,6 @@ BarWidget {
     }
   }
 
-  function gpuIconSource() {
-    switch (root.gpuMode.toLowerCase()) {
-      case "integrated": return "file:///usr/share/icons/hicolor/scalable/status/gpu-integrated.svg"
-      case "hybrid": return "file:///usr/share/icons/hicolor/scalable/status/gpu-hybrid.svg"
-      case "ultimate": return "file:///usr/share/icons/hicolor/scalable/status/gpu-nvidia.svg"
-      default: return ""
-    }
-  }
-
   function open() { if (panelLoader.item) panelLoader.item.open() }
   function close() { if (panelLoader.item) panelLoader.item.close() }
   function toggle() { if (panelLoader.item) panelLoader.item.toggle() }
@@ -186,27 +177,8 @@ BarWidget {
 
     BarIconButton {
       bar: root.bar
-      iconComponent: Component {
-        Item {
-          Image {
-            id: gpuMark
-            anchors.fill: parent
-            source: root.gpuIconSource()
-            fillMode: Image.PreserveAspectFit
-            smooth: true
-            visible: false
-            layer.enabled: true
-          }
-
-          MultiEffect {
-            anchors.fill: gpuMark
-            source: gpuMark
-            autoPaddingEnabled: false
-            colorization: 1.0
-            colorizationColor: root.bar ? root.bar.foreground : Color.foreground
-          }
-        }
-      }
+      // Keep the bar legible: exact graphics mode and runtime live in the tooltip.
+      text: ""
       tooltipText: root.graphicsTooltip()
       onPressed: function(mouseButton) { root.handleGlyphPress(mouseButton) }
     }
