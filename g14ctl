@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Allowlisted ASUS controller used by the G14 Controls Omarchy plugin.
-# It talks to asusd through asusctl; no root privileges are requested here.
+# It talks to asusd through asusctl; no administrative access is requested here.
 
 notify() {
   if command -v omarchy-notification-send >/dev/null 2>&1; then

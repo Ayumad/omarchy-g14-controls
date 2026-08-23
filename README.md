@@ -26,7 +26,7 @@ change while NVIDIA compute processes are active.
 - ASUS WMI support for the controls exposed by the specific laptop
 
 The bundled `g14ctl` helper runs with the logged-in user's permissions and
-does not call `sudo`. The plugin and helper are unsandboxed, as are Omarchy
+does not request administrative access. The plugin and helper are unsandboxed, as are Omarchy
 shell plugins generally; review the code before installing it on another
 machine.
 
