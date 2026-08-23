@@ -149,6 +149,16 @@ adaptive_profile_enabled() {
   [[ "$ac_profile" == "Balanced" && "$battery_profile" == "Quiet" ]] && printf 'true' || printf 'false'
 }
 
+set_fixed_profile() {
+  local profile="$1"
+  # Adaptive is represented by the AC/Battery pair Balanced/Quiet. A fixed
+  # profile must replace both assignments, otherwise the next status refresh
+  # will continue reporting Adaptive even after changing the active profile.
+  "$asusctl_bin" profile set --ac "$profile"
+  "$asusctl_bin" profile set --battery "$profile"
+  "$asusctl_bin" profile set "$profile"
+}
+
 keyboard_level() {
   local output level
   output=$("$asusctl_bin" leds get 2>/dev/null || true)
@@ -464,6 +474,9 @@ set_profile() {
     next|cycle)
       "$asusctl_bin" profile next
       applied_profile=$(profile_name)
+      [[ "$applied_profile" =~ ^(Quiet|Balanced|Performance)$ ]] \
+        && set_fixed_profile "$applied_profile"
+      applied_profile=$(profile_name)
       refresh_profile_widget "$applied_profile"
       notify_profile "Profile: $applied_profile"
       return
@@ -477,7 +490,7 @@ set_profile() {
       ;;
     *) die "profile must be quiet, balanced, performance, next, or adaptive" ;;
   esac
-  "$asusctl_bin" profile set "$profile"
+  set_fixed_profile "$profile"
   refresh_profile_widget "$profile"
   notify_profile "Profile: $profile"
 }

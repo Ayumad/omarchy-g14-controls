@@ -33,9 +33,10 @@ color range rather than a UI theme color.
 - **Power profiles** — Quiet, Balanced, and Performance controls. Adaptive
   configures ASUS defaults of Balanced on AC power and Quiet on battery; its
   dedicated automatic glyph carries one, two, or three small level marks for
-  the current Quiet, Balanced, or Performance target. Profile changes update
-  the bar immediately and replace, rather than stack, their desktop
-  notification.
+  the current Quiet, Balanced, or Performance target. Choosing a fixed profile
+  clears Adaptive by assigning that profile to both AC and battery. Profile
+  changes update the bar immediately and replace, rather than stack, their
+  desktop notification.
 - **Keyboard backlight and Aura** — Off/Low/Medium/High brightness controls,
   a horizontal hue-spectrum selector, and the modes actually exposed by the
   laptop firmware: Static, Breathing, Color Cycle, Rainbow, and Pulse.

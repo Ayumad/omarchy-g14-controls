@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "ayumad.g14-controls",
   "name": "G14 Controls",
-  "version": "1.7.8",
+  "version": "1.7.9",
   "author": "ayumad",
   "license": "MIT",
   "description": "Adaptive ASUS G14 controls for Omarchy: stable GPU/MUX status with per-mode GPU names, queued switching, Aura and Slash lighting, and optional G14 setup.",
