@@ -18,8 +18,9 @@ BarWidget {
   readonly property bool opened: panelLoader.item ? panelLoader.item.opened === true : false
 
   // WidgetButton is anchored rather than a layout child, so the host needs
-  // an explicit slot size even during the first status refresh.
-  implicitWidth: root.vertical ? root.barSize : Style.space(100)
+  // an explicit slot size. Follow the rendered label so long profiles (for
+  // example Performance) cannot paint into the neighboring status icons.
+  implicitWidth: root.vertical ? root.barSize : Math.max(Style.space(100), button.implicitWidth)
   implicitHeight: root.barSize
 
   function open() { if (panelLoader.item) panelLoader.item.open() }
@@ -61,7 +62,7 @@ BarWidget {
           root.gpuMode = value.gpu_mode || ""
           root.runtime = value.nvidia_runtime || ""
           root.keyboard = value.keyboard_brightness || ""
-          root.label = "G14 " + (root.profile || "") + " · " + (root.gpuMode || "")
+    root.label = "G14 " + (root.profile || "") + " · " + (root.gpuMode || "")
         } catch (error) {
           root.label = "G14"
         }
@@ -115,7 +116,8 @@ BarWidget {
     labelVisible: true
     horizontalMargin: 8
     verticalPadding: 6
-    tooltipText: "Left: G14 controls · Right: cycle profile · Middle: refresh"
+    tooltipText: "G14 " + (root.profile || "unknown") + " · " + (root.gpuMode || "unknown")
+      + " · NVIDIA " + (root.runtime || "unknown") + " · Keyboard " + (root.keyboard || "unknown")
     onPressed: function(mouseButton) {
       if (mouseButton === Qt.LeftButton) {
         if (panelLoader.item) panelLoader.item.toggle()

@@ -76,6 +76,50 @@ keyboard_level() {
   fi
 }
 
+aura_config() {
+  local path
+  for path in /etc/asusd/aura_*.ron; do
+    if [[ -r "$path" ]]; then
+      printf '%s' "$path"
+      return
+    fi
+  done
+  printf '?'
+}
+
+aura_mode_name() {
+  local config mode
+  config=$(aura_config)
+  [[ -r "$config" ]] || { printf 'static'; return; }
+  mode=$(sed -n 's/.*current_mode:[[:space:]]*\([A-Za-z0-9_]*\),.*/\1/p' "$config" | head -n1)
+  case "$mode" in
+    Static) printf 'static' ;;
+    Breathe) printf 'breathe' ;;
+    RainbowCycle) printf 'rainbow-cycle' ;;
+    RainbowWave) printf 'rainbow-wave' ;;
+    Pulse) printf 'pulse' ;;
+    *) printf 'static' ;;
+  esac
+}
+
+slash_mode_name() {
+  local mode
+  mode=$(sed -n 's/.*display_mode:[[:space:]]*\([A-Za-z0-9_]*\),.*/\1/p' /etc/asusd/slash.ron 2>/dev/null | head -n1)
+  printf '%s' "${mode:-Bounce}"
+}
+
+slash_brightness() {
+  local brightness
+  brightness=$(sed -n 's/.*brightness:[[:space:]]*\([0-9][0-9]*\),.*/\1/p' /etc/asusd/slash.ron 2>/dev/null | head -n1)
+  printf '%s' "${brightness:-255}"
+}
+
+slash_enabled() {
+  local enabled
+  enabled=$(sed -n 's/.*enabled:[[:space:]]*\(true\|false\),.*/\1/p' /etc/asusd/slash.ron 2>/dev/null | head -n1)
+  printf '%s' "${enabled:-unknown}"
+}
+
 nvidia_runtime() {
   local device vendor
   for device in /sys/bus/pci/devices/*; do
@@ -89,13 +133,17 @@ nvidia_runtime() {
 }
 
 status_json() {
-  local profile mode disabled mux runtime keyboard
+  local profile mode disabled mux runtime keyboard aura slash brightness enabled
   profile=$(profile_name)
   mode=$(gpu_mode)
   disabled=$(sysfs_value dgpu_disable)
   mux=$(sysfs_value gpu_mux_mode)
   runtime=$(nvidia_runtime)
   keyboard=$(keyboard_level)
+  aura=$(aura_mode_name)
+  slash=$(slash_mode_name)
+  brightness=$(slash_brightness)
+  enabled=$(slash_enabled)
   jq -cn \
     --arg profile "$profile" \
     --arg mode "$mode" \
@@ -103,7 +151,11 @@ status_json() {
     --arg mux "$mux" \
     --arg runtime "$runtime" \
     --arg keyboard "$keyboard" \
-    '{profile:$profile,gpu_mode:$mode,dgpu_disable:$disabled,gpu_mux_mode:$mux,nvidia_runtime:$runtime,keyboard_brightness:$keyboard}'
+    --arg aura_mode "$aura" \
+    --arg slash_mode "$slash" \
+    --arg slash_brightness "$brightness" \
+    --arg slash_enabled "$enabled" \
+    '{profile:$profile,gpu_mode:$mode,dgpu_disable:$disabled,gpu_mux_mode:$mux,nvidia_runtime:$runtime,keyboard_brightness:$keyboard,aura_mode:$aura_mode,slash_mode:$slash_mode,slash_brightness:$slash_brightness,slash_enabled:$slash_enabled}'
 }
 
 set_profile() {
@@ -156,6 +208,52 @@ set_keyboard() {
   notify "Keyboard backlight: $(keyboard_level)"
 }
 
+set_aura_mode() {
+  local mode="${1:-}" colour="${2:-ff2244}"
+  [[ "$colour" =~ ^[0-9A-Fa-f]{6}$ ]] || die "aura color must be a 6-digit RGB value, e.g. 33ccff"
+  case "$mode" in
+    static) "$asusctl_bin" aura effect static --colour "$colour" ;;
+    breathe) "$asusctl_bin" aura effect breathe --colour "$colour" --colour2 000000 --speed med ;;
+    rainbow-cycle) "$asusctl_bin" aura effect rainbow-cycle --speed med ;;
+    rainbow-wave) "$asusctl_bin" aura effect rainbow-wave --direction right --speed med ;;
+    pulse) "$asusctl_bin" aura effect pulse --colour "$colour" ;;
+    *) die "aura mode must be static, breathe, rainbow-cycle, rainbow-wave, or pulse" ;;
+  esac
+  notify "Keyboard Aura: $mode"
+}
+
+set_slash_mode() {
+  local requested="${1:-}" mode
+  case "$requested" in
+    static|Static) mode=Static ;;
+    bounce|Bounce) mode=Bounce ;;
+    slash|Slash) mode=Slash ;;
+    loading|Loading) mode=Loading ;;
+    bitstream|BitStream) mode=BitStream ;;
+    transmission|Transmission) mode=Transmission ;;
+    flow|Flow) mode=Flow ;;
+    flux|Flux) mode=Flux ;;
+    phantom|Phantom) mode=Phantom ;;
+    spectrum|Spectrum) mode=Spectrum ;;
+    hazard|Hazard) mode=Hazard ;;
+    interfacing|Interfacing) mode=Interfacing ;;
+    ramp|Ramp) mode=Ramp ;;
+    gameover|GameOver) mode=GameOver ;;
+    start|Start) mode=Start ;;
+    buzzer|Buzzer) mode=Buzzer ;;
+    *) die "unsupported Slash mode: $requested" ;;
+  esac
+  "$asusctl_bin" slash --mode "$mode"
+  notify "Slash mode: $mode"
+}
+
+set_slash_brightness() {
+  local brightness="${1:-}"
+  [[ "$brightness" =~ ^[0-9]+$ && "$brightness" -le 255 ]] || die "Slash brightness must be 0-255"
+  "$asusctl_bin" slash --brightness "$brightness"
+  notify "Slash brightness: $brightness/255"
+}
+
 toggle_airplane() {
   command -v rfkill >/dev/null 2>&1 || die "rfkill is not installed"
   local soft_blocked
@@ -186,6 +284,9 @@ case "${1:-status}" in
     "$asusctl_bin" aura effect static --colour "$2"
     notify "Keyboard Aura: #$2"
     ;;
+  aura-mode)
+    set_aura_mode "${2:-}" "${3:-ff2244}"
+    ;;
   aura-next)
     "$asusctl_bin" aura effect --next-mode >/dev/null 2>&1
     notify "Keyboard Aura: next effect"
@@ -197,8 +298,14 @@ case "${1:-status}" in
       *) die "slash must be on or off" ;;
     esac
     ;;
+  slash-mode)
+    set_slash_mode "${2:-}"
+    ;;
+  slash-brightness)
+    set_slash_brightness "${2:-}"
+    ;;
   *)
-    printf '%s\n' 'Usage: g14ctl {status|gui|profile {adaptive|quiet|balanced|performance|next}|graphics {integrated|hybrid|ultimate}|keyboard {off|low|med|high|up|down|cycle}|aura-static RRGGBB|aura-next|airplane|slash {on|off}}' >&2
+    printf '%s\n' 'Usage: g14ctl {status|gui|profile {adaptive|quiet|balanced|performance|next}|graphics {integrated|hybrid|ultimate}|keyboard {off|low|med|high|up|down|cycle}|aura-static RRGGBB|aura-mode MODE [RRGGBB]|aura-next|airplane|slash {on|off}|slash-mode MODE|slash-brightness 0-255}' >&2
     exit 2
     ;;
 esac

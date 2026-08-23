@@ -8,15 +8,18 @@ Click it (or press the configured ROG key) to open a Quickshell panel.
 ## Features
 
 - Quiet, Balanced, and Performance profiles
-- Keyboard backlight off/low/medium/high and next/previous effect
-- Aura next, red, and blue effects
-- Slash LED on/off
+- Keyboard backlight off/low/medium/high
+- Aura effect selector, preset colors, custom `#RRGGBB`, and next effect
+- Slash LED on/off, all modes exposed by the G14 firmware, and brightness
 - Integrated, Hybrid, and Ultimate graphics modes
 - Optional airplane-mode toggle through `rfkill`
 
 Graphics mode changes are deliberately manual and require a reboot. The
 plugin never switches graphics mode automatically and refuses to schedule a
-change while NVIDIA compute processes are active.
+change while NVIDIA compute processes are active. The Linux stack exposes the
+same firmware profile, fan-curve, Aura, Slash, battery-limit, and MUX
+endpoints that the hardware supports; unsupported model-specific endpoints
+remain hidden rather than being emulated.
 
 ## Requirements
 

@@ -17,10 +17,45 @@ Panel {
   property string gpuMode: ""
   property string runtime: ""
   property string keyboard: ""
+  property string auraMode: "static"
+  property string selectedAuraColor: "ff2244"
+  property string slashMode: "Bounce"
+  property string slashBrightness: "255"
+  property string slashEnabled: "unknown"
   readonly property string configHome: Quickshell.env("XDG_CONFIG_HOME") || (Quickshell.env("HOME") + "/.config")
   readonly property string helperPath: configHome + "/omarchy/plugins/ayumad.g14-controls/g14ctl"
   property string message: ""
   property string errorMessage: ""
+
+  readonly property var auraColors: [
+    { value: "ff2244", label: "Red" },
+    { value: "ff9900", label: "Amber" },
+    { value: "ffee33", label: "Yellow" },
+    { value: "33dd66", label: "Green" },
+    { value: "22ccff", label: "Cyan" },
+    { value: "2299ff", label: "Blue" },
+    { value: "aa66ff", label: "Purple" },
+    { value: "ffffff", label: "White" }
+  ]
+  readonly property var auraModes: [
+    { value: "static", label: "Static" },
+    { value: "breathe", label: "Breathe" },
+    { value: "rainbow-cycle", label: "Rainbow cycle" },
+    { value: "rainbow-wave", label: "Rainbow wave" },
+    { value: "pulse", label: "Pulse" }
+  ]
+  readonly property var slashModes: [
+    "Static", "Bounce", "Slash", "Loading", "BitStream", "Transmission",
+    "Flow", "Flux", "Phantom", "Spectrum", "Hazard", "Interfacing",
+    "Ramp", "GameOver", "Start", "Buzzer"
+  ]
+  readonly property var slashBrightnessLevels: [
+    { value: "0", label: "Off" },
+    { value: "64", label: "25%" },
+    { value: "128", label: "50%" },
+    { value: "192", label: "75%" },
+    { value: "255", label: "100%" }
+  ]
 
   readonly property color contentForeground: root.bar ? root.bar.foreground : Color.foreground
   readonly property string contentFontFamily: root.bar ? root.bar.fontFamily : Style.font.family
@@ -37,6 +72,37 @@ Panel {
     actionProc.running = true
   }
 
+  function normalizedColor(raw) {
+    var value = String(raw || "").trim().replace(/^#/, "")
+    return /^[0-9a-fA-F]{6}$/.test(value) ? value.toLowerCase() : ""
+  }
+
+  function applyAuraColor(raw) {
+    var color = normalizedColor(raw)
+    if (!color) {
+      root.errorMessage = "Use six hex digits, for example ff2244"
+      return
+    }
+    root.selectedAuraColor = color
+    auraHexField.text = "#" + color
+    root.runAction(["aura-static", color])
+  }
+
+  function applyAuraMode(mode) {
+    root.auraMode = String(mode)
+    root.runAction(["aura-mode", root.auraMode, root.selectedAuraColor])
+  }
+
+  function applySlashMode(mode) {
+    root.slashMode = String(mode)
+    root.runAction(["slash-mode", root.slashMode])
+  }
+
+  function applySlashBrightness(value) {
+    root.slashBrightness = String(value)
+    root.runAction(["slash-brightness", root.slashBrightness])
+  }
+
   function updateStatus(raw) {
     try {
       var value = JSON.parse(raw)
@@ -44,6 +110,10 @@ Panel {
       root.gpuMode = value.gpu_mode || ""
       root.runtime = value.nvidia_runtime || ""
       root.keyboard = value.keyboard_brightness || ""
+      root.auraMode = value.aura_mode || root.auraMode
+      root.slashMode = value.slash_mode || root.slashMode
+      root.slashBrightness = value.slash_brightness || root.slashBrightness
+      root.slashEnabled = value.slash_enabled || root.slashEnabled
     } catch (error) {
       // Keep the last good state while a command is settling.
     }
@@ -110,6 +180,9 @@ Panel {
     PanelKeyCatcher {
       id: keyCatcher
       anchors.fill: parent
+      blocked: auraModeDropdown.popupOpen || auraColorDropdown.popupOpen
+        || slashModeDropdown.popupOpen || slashBrightnessDropdown.popupOpen
+        || auraHexField.activeFocus
       onMoveRequested: function(dx, dy) {}
       onActivateRequested: function() {}
       onCloseRequested: root.close()
@@ -205,11 +278,11 @@ Panel {
               spacing: Style.space(6)
 
               Repeater {
-                model: ["Quiet", "Balanced", "Performance"]
+                model: ["Quiet", "Balanced", "Performance", "Adaptive"]
 
                 Button {
                   required property string modelData
-                  width: (profileFlow.width - profileFlow.spacing * 2) / 3
+                  width: (profileFlow.width - profileFlow.spacing * 3) / 4
                   text: modelData
                   fontSize: Style.font.bodySmall
                   foreground: root.contentForeground
@@ -217,7 +290,7 @@ Panel {
                   horizontalPadding: Style.spacing.controlPaddingX
                   verticalPadding: Style.spacing.controlPaddingY
                   bordered: true
-                  active: root.profile === modelData
+                  active: modelData !== "Adaptive" && root.profile === modelData
                   onClicked: root.runAction(["profile", modelData.toLowerCase()])
                 }
               }
@@ -242,11 +315,11 @@ Panel {
               spacing: Style.space(6)
 
               Repeater {
-                model: ["off", "low", "med", "high", "down", "up"]
+                model: ["off", "low", "med", "high"]
 
                 Button {
                   required property string modelData
-                  width: (keyboardFlow.width - keyboardFlow.spacing * 5) / 6
+                  width: (keyboardFlow.width - keyboardFlow.spacing * 3) / 4
                   text: modelData.toUpperCase()
                   fontSize: Style.font.caption
                   foreground: root.contentForeground
@@ -267,59 +340,144 @@ Panel {
             spacing: Style.space(8)
 
             PanelSectionHeader {
-              text: "AURA / SLASH"
+              text: "KEYBOARD AURA"
               foreground: root.contentForeground
               fontFamily: root.contentFontFamily
             }
 
-            Flow {
-              id: auraFlow
+            Row {
               width: parent.width
-              spacing: Style.space(6)
+              spacing: Style.space(8)
+
+              Dropdown {
+                id: auraModeDropdown
+                width: (parent.width - parent.spacing) / 2
+                label: "EFFECT"
+                value: root.auraMode
+                options: root.auraModes
+                foreground: root.contentForeground
+                fontFamily: root.contentFontFamily
+                onChanged: root.applyAuraMode(value)
+              }
+
+              Dropdown {
+                id: auraColorDropdown
+                width: (parent.width - parent.spacing) / 2
+                label: "COLOR"
+                value: root.selectedAuraColor
+                options: root.auraColors
+                foreground: root.contentForeground
+                fontFamily: root.contentFontFamily
+                onChanged: root.applyAuraColor(value)
+              }
+            }
+
+            Row {
+              width: parent.width
+              spacing: Style.space(8)
+
+              TextField {
+                id: auraHexField
+                width: parent.width - applyColorButton.width - parent.spacing
+                text: "#" + root.selectedAuraColor
+                placeholderText: "#RRGGBB"
+                foreground: root.contentForeground
+                onAccepted: root.applyAuraColor(text)
+              }
 
               Button {
-                width: (auraFlow.width - auraFlow.spacing * 3) / 4
-                text: "NEXT"
+                id: applyColorButton
+                width: Style.space(82)
+                text: "SET"
                 fontSize: Style.font.caption
                 foreground: root.contentForeground
                 fontFamily: root.contentFontFamily
                 horizontalPadding: Style.spacing.controlPaddingX
                 verticalPadding: Style.spacing.controlPaddingY
                 bordered: true
-                onClicked: root.runAction(["aura-next"])
+                onClicked: root.applyAuraColor(auraHexField.text)
               }
-              Button {
-                width: (auraFlow.width - auraFlow.spacing * 3) / 4
-                text: "RED"
-                fontSize: Style.font.caption
+            }
+
+            Button {
+              width: parent.width
+              text: "NEXT EFFECT"
+              fontSize: Style.font.caption
+              foreground: root.contentForeground
+              fontFamily: root.contentFontFamily
+              horizontalPadding: Style.spacing.controlPaddingX
+              verticalPadding: Style.spacing.controlPaddingY
+              bordered: true
+              onClicked: root.runAction(["aura-next"])
+            }
+          }
+
+          PanelSeparator { foreground: root.contentForeground }
+
+          Column {
+            width: parent.width
+            spacing: Style.space(8)
+
+            PanelSectionHeader {
+              text: "SLASH LIGHTBAR"
+              foreground: root.contentForeground
+              fontFamily: root.contentFontFamily
+            }
+
+            Row {
+              width: parent.width
+              spacing: Style.space(8)
+
+              Dropdown {
+                id: slashModeDropdown
+                width: (parent.width - parent.spacing) * 0.62
+                label: "MODE"
+                value: root.slashMode
+                options: root.slashModes
                 foreground: root.contentForeground
                 fontFamily: root.contentFontFamily
-                horizontalPadding: Style.spacing.controlPaddingX
-                verticalPadding: Style.spacing.controlPaddingY
-                bordered: true
-                onClicked: root.runAction(["aura-static", "ff2244"])
+                onChanged: root.applySlashMode(value)
               }
-              Button {
-                width: (auraFlow.width - auraFlow.spacing * 3) / 4
-                text: "BLUE"
-                fontSize: Style.font.caption
+
+              Dropdown {
+                id: slashBrightnessDropdown
+                width: (parent.width - parent.spacing) * 0.38
+                label: "BRIGHTNESS"
+                value: root.slashBrightness
+                options: root.slashBrightnessLevels
                 foreground: root.contentForeground
                 fontFamily: root.contentFontFamily
-                horizontalPadding: Style.spacing.controlPaddingX
-                verticalPadding: Style.spacing.controlPaddingY
-                bordered: true
-                onClicked: root.runAction(["aura-static", "2299ff"])
+                onChanged: root.applySlashBrightness(value)
               }
+            }
+
+            Row {
+              width: parent.width
+              spacing: Style.space(8)
+
               Button {
-                width: (auraFlow.width - auraFlow.spacing * 3) / 4
-                text: "SLASH"
+                width: (parent.width - parent.spacing) / 2
+                text: "SLASH ON"
                 fontSize: Style.font.caption
                 foreground: root.contentForeground
                 fontFamily: root.contentFontFamily
                 horizontalPadding: Style.spacing.controlPaddingX
                 verticalPadding: Style.spacing.controlPaddingY
                 bordered: true
+                active: root.slashEnabled === "true"
                 onClicked: root.runAction(["slash", "on"])
+              }
+              Button {
+                width: (parent.width - parent.spacing) / 2
+                text: "SLASH OFF"
+                fontSize: Style.font.caption
+                foreground: root.contentForeground
+                fontFamily: root.contentFontFamily
+                horizontalPadding: Style.spacing.controlPaddingX
+                verticalPadding: Style.spacing.controlPaddingY
+                bordered: true
+                active: root.slashEnabled === "false"
+                onClicked: root.runAction(["slash", "off"])
               }
             }
           }
@@ -366,18 +524,7 @@ Panel {
             spacing: Style.space(8)
 
             Button {
-              width: (parent.width - parent.spacing) / 2
-              text: "SLASH OFF"
-              fontSize: Style.font.bodySmall
-              foreground: root.contentForeground
-              fontFamily: root.contentFontFamily
-              horizontalPadding: Style.spacing.controlPaddingX
-              verticalPadding: Style.spacing.controlPaddingY
-              bordered: true
-              onClicked: root.runAction(["slash", "off"])
-            }
-            Button {
-              width: (parent.width - parent.spacing) / 2
+              width: parent.width
               text: "REFRESH"
               fontSize: Style.font.bodySmall
               foreground: root.contentForeground
