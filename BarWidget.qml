@@ -9,6 +9,7 @@ BarWidget {
   id: root
   moduleName: "ayumad.g14-controls"
   property string profile: ""
+  property bool adaptive: false
   property string gpuMode: ""
   property string runtime: ""
   property string dgpuName: ""
@@ -30,6 +31,11 @@ BarWidget {
       case "performance": return "󰓅"
       default: return "󰂄"
     }
+  }
+
+  function profileTooltip() {
+    var current = root.profile || "unknown"
+    return root.adaptive ? "Adaptive profile · " + current + " now" : "Profile: " + current
   }
 
   function open() { if (panelLoader.item) panelLoader.item.open() }
@@ -86,6 +92,7 @@ BarWidget {
         try {
           var value = JSON.parse(text)
           root.profile = value.profile || ""
+          root.adaptive = value.adaptive === true
           root.gpuMode = value.gpu_mode || ""
           root.runtime = value.dgpu_runtime || value.nvidia_runtime || ""
           root.dgpuName = value.dgpu_name || ""
@@ -175,8 +182,30 @@ BarWidget {
 
     BarIconButton {
       bar: root.bar
-      text: root.profileGlyph()
-      tooltipText: "Profile: " + (root.profile || "unknown")
+      iconComponent: Component {
+        Item {
+          Text {
+            anchors.centerIn: parent
+            text: root.profileGlyph()
+            color: root.bar ? root.bar.foreground : Color.foreground
+            font.family: root.bar ? root.bar.fontFamily : Style.font.family
+            font.pixelSize: Style.bar.iconFont
+          }
+
+          // The small circular-arrow badge distinguishes AC/battery automation
+          // from a directly selected firmware profile without widening the bar.
+          Text {
+            visible: root.adaptive
+            anchors.right: parent.right
+            anchors.bottom: parent.bottom
+            text: "↻"
+            color: root.bar ? root.bar.foreground : Color.foreground
+            font.family: root.bar ? root.bar.fontFamily : Style.font.family
+            font.pixelSize: Math.max(6, Math.round(Style.bar.iconFont * 0.55))
+          }
+        }
+      }
+      tooltipText: root.profileTooltip()
       onPressed: function(mouseButton) { root.handleGlyphPress(mouseButton) }
     }
 

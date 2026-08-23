@@ -101,6 +101,14 @@ profile_name() {
     || true
 }
 
+adaptive_profile_enabled() {
+  local output ac_profile battery_profile
+  output=$("$asusctl_bin" profile get 2>/dev/null || true)
+  ac_profile=$(printf '%s\n' "$output" | sed -n 's/^AC profile[[:space:]]*//p' | head -n1)
+  battery_profile=$(printf '%s\n' "$output" | sed -n 's/^Battery profile[[:space:]]*//p' | head -n1)
+  [[ "$ac_profile" == "Balanced" && "$battery_profile" == "Quiet" ]] && printf 'true' || printf 'false'
+}
+
 keyboard_level() {
   local output level
   output=$("$asusctl_bin" leds get 2>/dev/null || true)
@@ -234,8 +242,9 @@ dgpu_runtime() {
 }
 
 status_json() {
-  local profile mode disabled mux runtime dgpu keyboard aura colour slash brightness enabled
+  local profile adaptive mode disabled mux runtime dgpu keyboard aura colour slash brightness enabled
   profile=$(profile_name)
+  adaptive=$(adaptive_profile_enabled)
   mode=$(gpu_mode)
   disabled=$(sysfs_value dgpu_disable)
   mux=$(sysfs_value gpu_mux_mode)
@@ -249,6 +258,7 @@ status_json() {
   enabled=$(slash_enabled)
   jq -cn \
     --arg profile "$profile" \
+    --argjson adaptive "$adaptive" \
     --arg mode "$mode" \
     --arg disabled "$disabled" \
     --arg mux "$mux" \
@@ -260,7 +270,7 @@ status_json() {
     --arg slash_mode "$slash" \
     --arg slash_brightness "$brightness" \
     --arg slash_enabled "$enabled" \
-    '{profile:$profile,gpu_mode:$mode,dgpu_disable:$disabled,gpu_mux_mode:$mux,dgpu_name:$dgpu,dgpu_runtime:$runtime,nvidia_runtime:$runtime,keyboard_brightness:$keyboard,aura_mode:$aura_mode,aura_color:$aura_color,slash_mode:$slash_mode,slash_brightness:$slash_brightness,slash_enabled:$slash_enabled}'
+    '{profile:$profile,adaptive:$adaptive,gpu_mode:$mode,dgpu_disable:$disabled,gpu_mux_mode:$mux,dgpu_name:$dgpu,dgpu_runtime:$runtime,nvidia_runtime:$runtime,keyboard_brightness:$keyboard,aura_mode:$aura_mode,aura_color:$aura_color,slash_mode:$slash_mode,slash_brightness:$slash_brightness,slash_enabled:$slash_enabled}'
 }
 
 set_profile() {

@@ -14,6 +14,7 @@ Panel {
   property var anchorItem: null
   property var hostWidget: null
   property string profile: ""
+  property bool adaptive: false
   property string gpuMode: ""
   property string runtime: ""
   property string dgpuName: ""
@@ -128,6 +129,7 @@ Panel {
     try {
       var value = JSON.parse(raw)
       root.profile = value.profile || ""
+      root.adaptive = value.adaptive === true
       root.gpuMode = value.gpu_mode || ""
       root.runtime = value.dgpu_runtime || value.nvidia_runtime || ""
       root.dgpuName = value.dgpu_name || ""
@@ -321,7 +323,7 @@ Panel {
                   horizontalPadding: Style.spacing.controlPaddingX
                   verticalPadding: Style.spacing.controlPaddingY
                   bordered: true
-                  active: modelData !== "Adaptive" && root.profile === modelData
+                  active: modelData === "Adaptive" ? root.adaptive : !root.adaptive && root.profile === modelData
                   onClicked: root.runAction(["profile", modelData.toLowerCase()])
                 }
               }
