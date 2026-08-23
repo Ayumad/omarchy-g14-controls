@@ -26,6 +26,7 @@ Panel {
   readonly property string helperPath: configHome + "/omarchy/plugins/ayumad.g14-controls/g14ctl"
   property string message: ""
   property string errorMessage: ""
+  property bool advancedOpen: false
 
   readonly property var auraColors: [
     { value: "ff2244", label: "Red" },
@@ -346,28 +347,9 @@ Panel {
             spacing: Style.space(8)
 
             PanelSectionHeader {
-              text: "KEYBOARD AURA"
+              text: "KEYBOARD COLOR"
               foreground: root.contentForeground
               fontFamily: root.contentFontFamily
-            }
-
-            Dropdown {
-              id: auraModeDropdown
-              width: parent.width
-              label: "EFFECT"
-              value: root.auraMode
-              options: root.auraModes
-              foreground: root.contentForeground
-              fontFamily: root.contentFontFamily
-              onChanged: root.applyAuraMode(value)
-            }
-
-            Text {
-              text: "COLOR"
-              color: Qt.darker(root.contentForeground, 1.4)
-              font.family: root.contentFontFamily
-              font.pixelSize: Style.font.caption
-              font.bold: true
             }
 
             Flow {
@@ -427,172 +409,211 @@ Panel {
                 }
               }
             }
-
-            Row {
-              width: parent.width
-              spacing: Style.space(8)
-
-              Rectangle {
-                id: customColorPreview
-                width: Style.space(34)
-                height: Style.space(34)
-                radius: Style.cornerRadius
-                anchors.verticalCenter: parent.verticalCenter
-                color: "#" + root.selectedAuraColor
-                border.width: Style.normalBorderWidth
-                border.color: Qt.rgba(root.contentForeground.r, root.contentForeground.g, root.contentForeground.b, 0.45)
-              }
-
-              TextField {
-                id: auraHexField
-                width: parent.width - customColorPreview.width - applyColorButton.width - parent.spacing * 2
-                text: "#" + root.selectedAuraColor
-                placeholderText: "#RRGGBB"
-                foreground: root.contentForeground
-                onAccepted: root.applyAuraColor(text)
-              }
-
-              Button {
-                id: applyColorButton
-                width: Style.space(82)
-                text: "SET"
-                fontSize: Style.font.caption
-                foreground: root.contentForeground
-                fontFamily: root.contentFontFamily
-                horizontalPadding: Style.spacing.controlPaddingX
-                verticalPadding: Style.spacing.controlPaddingY
-                bordered: true
-                onClicked: root.applyAuraColor(auraHexField.text)
-              }
-            }
-
-            Button {
-              width: parent.width
-              text: "NEXT EFFECT"
-              fontSize: Style.font.caption
-              foreground: root.contentForeground
-              fontFamily: root.contentFontFamily
-              horizontalPadding: Style.spacing.controlPaddingX
-              verticalPadding: Style.spacing.controlPaddingY
-              bordered: true
-              onClicked: root.runAction(["aura-next"])
-            }
           }
 
-          PanelSeparator { foreground: root.contentForeground }
+          Button {
+            width: parent.width
+            text: root.advancedOpen ? "HIDE ADVANCED CONTROLS" : "SHOW ADVANCED CONTROLS"
+            fontSize: Style.font.caption
+            foreground: root.contentForeground
+            fontFamily: root.contentFontFamily
+            horizontalPadding: Style.spacing.controlPaddingX
+            verticalPadding: Style.spacing.controlPaddingY
+            bordered: true
+            active: root.advancedOpen
+            onClicked: root.advancedOpen = !root.advancedOpen
+          }
 
           Column {
+            id: advancedControls
+            visible: root.advancedOpen
             width: parent.width
-            spacing: Style.space(8)
+            spacing: Style.space(14)
 
-            PanelSectionHeader {
-              text: "SLASH LIGHTBAR"
-              foreground: root.contentForeground
-              fontFamily: root.contentFontFamily
-            }
+            PanelSeparator { foreground: root.contentForeground }
 
-            Row {
+            Column {
               width: parent.width
               spacing: Style.space(8)
 
-              Dropdown {
-                id: slashModeDropdown
-                width: (parent.width - parent.spacing) * 0.62
-                label: "MODE"
-                value: root.slashMode
-                options: root.slashModes
+              PanelSectionHeader {
+                text: "AURA EFFECTS & CUSTOM COLOR"
                 foreground: root.contentForeground
                 fontFamily: root.contentFontFamily
-                onChanged: root.applySlashMode(value)
               }
 
               Dropdown {
-                id: slashBrightnessDropdown
-                width: (parent.width - parent.spacing) * 0.38
-                label: "BRIGHTNESS"
-                value: root.slashBrightness
-                options: root.slashBrightnessLevels
+                id: auraModeDropdown
+                width: parent.width
+                label: "EFFECT"
+                value: root.auraMode
+                options: root.auraModes
                 foreground: root.contentForeground
                 fontFamily: root.contentFontFamily
-                onChanged: root.applySlashBrightness(value)
+                onChanged: root.applyAuraMode(value)
               }
-            }
 
-            Row {
-              width: parent.width
-              spacing: Style.space(8)
+              Row {
+                width: parent.width
+                spacing: Style.space(8)
 
-              Button {
-                width: (parent.width - parent.spacing) / 2
-                text: "SLASH ON"
-                fontSize: Style.font.caption
-                foreground: root.contentForeground
-                fontFamily: root.contentFontFamily
-                horizontalPadding: Style.spacing.controlPaddingX
-                verticalPadding: Style.spacing.controlPaddingY
-                bordered: true
-                active: root.slashEnabled === "true"
-                onClicked: root.runAction(["slash", "on"])
-              }
-              Button {
-                width: (parent.width - parent.spacing) / 2
-                text: "SLASH OFF"
-                fontSize: Style.font.caption
-                foreground: root.contentForeground
-                fontFamily: root.contentFontFamily
-                horizontalPadding: Style.spacing.controlPaddingX
-                verticalPadding: Style.spacing.controlPaddingY
-                bordered: true
-                active: root.slashEnabled === "false"
-                onClicked: root.runAction(["slash", "off"])
-              }
-            }
-          }
+                Rectangle {
+                  id: customColorPreview
+                  width: Style.space(34)
+                  height: Style.space(34)
+                  radius: Style.cornerRadius
+                  anchors.verticalCenter: parent.verticalCenter
+                  color: "#" + root.selectedAuraColor
+                  border.width: Style.normalBorderWidth
+                  border.color: Qt.rgba(root.contentForeground.r, root.contentForeground.g, root.contentForeground.b, 0.45)
+                }
 
-          PanelSeparator { foreground: root.contentForeground }
-
-          Column {
-            width: parent.width
-            spacing: Style.space(8)
-
-            PanelSectionHeader {
-              text: "GRAPHICS MODE · REBOOT REQUIRED"
-              foreground: root.contentForeground
-              fontFamily: root.contentFontFamily
-            }
-
-            Flow {
-              id: gpuFlow
-              width: parent.width
-              spacing: Style.space(6)
-
-              Repeater {
-                model: ["integrated", "hybrid", "ultimate"]
+                TextField {
+                  id: auraHexField
+                  width: parent.width - customColorPreview.width - applyColorButton.width - parent.spacing * 2
+                  text: "#" + root.selectedAuraColor
+                  placeholderText: "#RRGGBB"
+                  foreground: root.contentForeground
+                  onAccepted: root.applyAuraColor(text)
+                }
 
                 Button {
-                  required property string modelData
-                  width: (gpuFlow.width - gpuFlow.spacing * 2) / 3
-                  text: modelData.toUpperCase()
-                  fontSize: Style.font.bodySmall
+                  id: applyColorButton
+                  width: Style.space(82)
+                  text: "SET"
+                  fontSize: Style.font.caption
                   foreground: root.contentForeground
                   fontFamily: root.contentFontFamily
                   horizontalPadding: Style.spacing.controlPaddingX
                   verticalPadding: Style.spacing.controlPaddingY
                   bordered: true
-                  active: root.gpuMode === modelData
-                  onClicked: root.runAction(["graphics", modelData])
+                  onClicked: root.applyAuraColor(auraHexField.text)
+                }
+              }
+
+              Button {
+                width: parent.width
+                text: "NEXT EFFECT"
+                fontSize: Style.font.caption
+                foreground: root.contentForeground
+                fontFamily: root.contentFontFamily
+                horizontalPadding: Style.spacing.controlPaddingX
+                verticalPadding: Style.spacing.controlPaddingY
+                bordered: true
+                onClicked: root.runAction(["aura-next"])
+              }
+            }
+
+            PanelSeparator { foreground: root.contentForeground }
+
+            Column {
+              width: parent.width
+              spacing: Style.space(8)
+
+              PanelSectionHeader {
+                text: "SLASH LIGHTBAR"
+                foreground: root.contentForeground
+                fontFamily: root.contentFontFamily
+              }
+
+              Row {
+                width: parent.width
+                spacing: Style.space(8)
+
+                Dropdown {
+                  id: slashModeDropdown
+                  width: (parent.width - parent.spacing) * 0.62
+                  label: "MODE"
+                  value: root.slashMode
+                  options: root.slashModes
+                  foreground: root.contentForeground
+                  fontFamily: root.contentFontFamily
+                  onChanged: root.applySlashMode(value)
+                }
+
+                Dropdown {
+                  id: slashBrightnessDropdown
+                  width: (parent.width - parent.spacing) * 0.38
+                  label: "BRIGHTNESS"
+                  value: root.slashBrightness
+                  options: root.slashBrightnessLevels
+                  foreground: root.contentForeground
+                  fontFamily: root.contentFontFamily
+                  onChanged: root.applySlashBrightness(value)
+                }
+              }
+
+              Row {
+                width: parent.width
+                spacing: Style.space(8)
+
+                Button {
+                  width: (parent.width - parent.spacing) / 2
+                  text: "SLASH ON"
+                  fontSize: Style.font.caption
+                  foreground: root.contentForeground
+                  fontFamily: root.contentFontFamily
+                  horizontalPadding: Style.spacing.controlPaddingX
+                  verticalPadding: Style.spacing.controlPaddingY
+                  bordered: true
+                  active: root.slashEnabled === "true"
+                  onClicked: root.runAction(["slash", "on"])
+                }
+                Button {
+                  width: (parent.width - parent.spacing) / 2
+                  text: "SLASH OFF"
+                  fontSize: Style.font.caption
+                  foreground: root.contentForeground
+                  fontFamily: root.contentFontFamily
+                  horizontalPadding: Style.spacing.controlPaddingX
+                  verticalPadding: Style.spacing.controlPaddingY
+                  bordered: true
+                  active: root.slashEnabled === "false"
+                  onClicked: root.runAction(["slash", "off"])
                 }
               }
             }
-          }
 
-          Row {
-            width: parent.width
-            spacing: Style.space(8)
+            PanelSeparator { foreground: root.contentForeground }
+
+            Column {
+              width: parent.width
+              spacing: Style.space(8)
+
+              PanelSectionHeader {
+                text: "GRAPHICS MODE · REBOOT REQUIRED"
+                foreground: root.contentForeground
+                fontFamily: root.contentFontFamily
+              }
+
+              Flow {
+                id: gpuFlow
+                width: parent.width
+                spacing: Style.space(6)
+
+                Repeater {
+                  model: ["integrated", "hybrid", "ultimate"]
+
+                  Button {
+                    required property string modelData
+                    width: (gpuFlow.width - gpuFlow.spacing * 2) / 3
+                    text: modelData.toUpperCase()
+                    fontSize: Style.font.bodySmall
+                    foreground: root.contentForeground
+                    fontFamily: root.contentFontFamily
+                    horizontalPadding: Style.spacing.controlPaddingX
+                    verticalPadding: Style.spacing.controlPaddingY
+                    bordered: true
+                    active: root.gpuMode === modelData
+                    onClicked: root.runAction(["graphics", modelData])
+                  }
+                }
+              }
+            }
 
             Button {
               width: parent.width
-              text: "REFRESH"
+              text: "REFRESH STATUS"
               fontSize: Style.font.bodySmall
               foreground: root.contentForeground
               fontFamily: root.contentFontFamily

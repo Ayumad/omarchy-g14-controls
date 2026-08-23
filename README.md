@@ -14,6 +14,11 @@ Click it (or press the configured ROG key) to open a Quickshell panel.
 - Integrated, Hybrid, and Ultimate graphics modes
 - Optional airplane-mode toggle through `rfkill`
 
+The default panel is deliberately compact: profile, keyboard-backlight, and
+keyboard-color controls are always visible. Select **Show advanced controls**
+for Aura effects, custom RGB input, Slash controls, graphics mode, and manual
+status refresh.
+
 Graphics mode changes are deliberately manual and require a reboot. The
 plugin never switches graphics mode automatically and refuses to schedule a
 change while NVIDIA compute processes are active. The Linux stack exposes the
