@@ -15,6 +15,9 @@ color range rather than a UI theme color.
   dGPU model, graphics mode, and runtime state. An expansion-card glyph appears
   while the dGPU is active; the microchip glyph represents integrated or
   sleeping Hybrid states.
+- **Focused glyph panels** — select the profile or GPU glyph to open only its
+  power or graphics controls, anchored directly below that glyph. The ROG mark
+  always opens the complete panel.
 - **Power profiles** — Quiet, Balanced, and Performance controls. Adaptive
   configures ASUS defaults of Balanced on AC power and Quiet on battery; its
   bar glyph carries a small automatic badge while retaining the active profile
@@ -34,6 +37,10 @@ color range rather than a UI theme color.
 - **Theme-native UI** — the bar, ROG mark, panel, typography, and controls
   inherit the active Omarchy theme and font automatically. The keyboard hue
   strip stays multicolored because it is a lighting tool, not a theme accent.
+- **Keyboard color lock** — opt in to preserve the current supported Aura
+  lighting across Omarchy theme changes. The lock creates one user-owned
+  `theme-set` hook only while enabled; changing color or effect while locked
+  updates the saved lighting, and disabling it removes that hook and state.
 - **Optional airplane mode** through `rfkill`.
 
 The default panel is deliberately compact: profile, keyboard backlight, and a
@@ -81,6 +88,9 @@ o.bind("XF86Launch1", "G14 controls", "omarchy-shell shell toggle ayumad.g14-con
 The widget's right-click cycles profiles and middle-click refreshes its state.
 The included panel does not create or overwrite Hyprland keybindings; add only
 the bindings you want.
+
+If keyboard color lock is enabled, turn it off in the panel before removing
+the plugin to remove its user-owned theme hook.
 
 ## Remove
 

@@ -57,6 +57,12 @@ asusctl_bin="${ASUSCTL_BIN:-$(command -v asusctl || true)}"
 [[ -x "$asusctl_bin" ]] || die "asusctl is not installed or not on PATH"
 command -v jq >/dev/null 2>&1 || die "jq is required for status output"
 
+plugin_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+aura_lock_state_dir="${XDG_STATE_HOME:-${HOME}/.local/state}/ayumad.g14-controls"
+aura_lock_file="$aura_lock_state_dir/keyboard-lighting.lock"
+aura_lock_hook="${XDG_CONFIG_HOME:-${HOME}/.config}/omarchy/hooks/theme-set.d/ayumad-g14-controls"
+aura_lock_hook_template="$plugin_dir/theme-set-hook"
+
 read_value() {
   local path="$1"
   if [[ -r "$path" ]]; then
@@ -169,6 +175,67 @@ aura_color() {
   fi
 }
 
+aura_lock_values() {
+  local mode colour
+  [[ -r "$aura_lock_file" ]] || return 1
+  mode=$(sed -n 's/^mode=//p' "$aura_lock_file" | head -n1)
+  colour=$(sed -n 's/^colour=//p' "$aura_lock_file" | head -n1)
+  [[ "$mode" =~ ^(static|breathe|rainbow-cycle|rainbow-wave|pulse)$ ]] || return 1
+  [[ "$colour" =~ ^[0-9A-Fa-f]{6}$ ]] || return 1
+  printf '%s %s\n' "$mode" "${colour,,}"
+}
+
+aura_lock_enabled() {
+  aura_lock_values >/dev/null
+}
+
+write_aura_lock() {
+  local mode="${1:-}" colour="${2:-}"
+  [[ "$mode" =~ ^(static|breathe|rainbow-cycle|rainbow-wave|pulse)$ ]] || die "unsupported Aura mode for color lock"
+  [[ "$colour" =~ ^[0-9A-Fa-f]{6}$ ]] || die "invalid Aura color for color lock"
+  mkdir -p "$aura_lock_state_dir"
+  (umask 077; printf 'mode=%s\ncolour=%s\n' "$mode" "${colour,,}" > "$aura_lock_file")
+}
+
+install_aura_lock_hook() {
+  [[ -x "$aura_lock_hook_template" ]] || die "keyboard-color lock hook is unavailable"
+  install -Dm700 "$aura_lock_hook_template" "$aura_lock_hook"
+}
+
+apply_aura_effect() {
+  local mode="${1:-}" colour="${2:-}"
+  case "$mode" in
+    static) "$asusctl_bin" aura effect static --colour "$colour" ;;
+    breathe) "$asusctl_bin" aura effect breathe --colour "$colour" --colour2 000000 --speed med ;;
+    rainbow-cycle) "$asusctl_bin" aura effect rainbow-cycle --speed med ;;
+    rainbow-wave) "$asusctl_bin" aura effect rainbow-wave --direction right --speed med ;;
+    pulse) "$asusctl_bin" aura effect pulse --colour "$colour" ;;
+    *) die "aura mode must be static, breathe, rainbow-cycle, rainbow-wave, or pulse" ;;
+  esac
+}
+
+set_aura_lock() {
+  local action="${1:-}" mode colour
+  case "$action" in
+    on)
+      mode=$(aura_mode_name)
+      colour=$(aura_color)
+      write_aura_lock "$mode" "$colour"
+      install_aura_lock_hook
+      notify "Keyboard color lock: on"
+      ;;
+    off)
+      rm -f -- "$aura_lock_file" "$aura_lock_hook"
+      notify "Keyboard color lock: off"
+      ;;
+    apply)
+      read -r mode colour < <(aura_lock_values) || return 0
+      apply_aura_effect "$mode" "$colour"
+      ;;
+    *) die "aura-lock must be on, off, or apply" ;;
+  esac
+}
+
 slash_mode_name() {
   local mode
   mode=$(sed -n 's/.*display_mode:[[:space:]]*\([A-Za-z0-9_]*\),.*/\1/p' /etc/asusd/slash.ron 2>/dev/null | head -n1)
@@ -242,7 +309,7 @@ dgpu_runtime() {
 }
 
 status_json() {
-  local profile adaptive mode disabled mux runtime dgpu keyboard aura colour slash brightness enabled
+  local profile adaptive mode disabled mux runtime dgpu keyboard aura colour aura_locked slash brightness enabled
   profile=$(profile_name)
   adaptive=$(adaptive_profile_enabled)
   mode=$(gpu_mode)
@@ -253,6 +320,7 @@ status_json() {
   keyboard=$(keyboard_level)
   aura=$(aura_mode_name)
   colour=$(aura_color)
+  aura_locked=$(aura_lock_enabled && printf 'true' || printf 'false')
   slash=$(slash_mode_name)
   brightness=$(slash_brightness)
   enabled=$(slash_enabled)
@@ -267,10 +335,11 @@ status_json() {
     --arg keyboard "$keyboard" \
     --arg aura_mode "$aura" \
     --arg aura_color "$colour" \
+    --argjson aura_locked "$aura_locked" \
     --arg slash_mode "$slash" \
     --arg slash_brightness "$brightness" \
     --arg slash_enabled "$enabled" \
-    '{profile:$profile,adaptive:$adaptive,gpu_mode:$mode,dgpu_disable:$disabled,gpu_mux_mode:$mux,dgpu_name:$dgpu,dgpu_runtime:$runtime,nvidia_runtime:$runtime,keyboard_brightness:$keyboard,aura_mode:$aura_mode,aura_color:$aura_color,slash_mode:$slash_mode,slash_brightness:$slash_brightness,slash_enabled:$slash_enabled}'
+    '{profile:$profile,adaptive:$adaptive,gpu_mode:$mode,dgpu_disable:$disabled,gpu_mux_mode:$mux,dgpu_name:$dgpu,dgpu_runtime:$runtime,nvidia_runtime:$runtime,keyboard_brightness:$keyboard,aura_mode:$aura_mode,aura_color:$aura_color,aura_locked:$aura_locked,slash_mode:$slash_mode,slash_brightness:$slash_brightness,slash_enabled:$slash_enabled}'
 }
 
 set_profile() {
@@ -330,14 +399,8 @@ set_keyboard() {
 set_aura_mode() {
   local mode="${1:-}" colour="${2:-ff2244}"
   [[ "$colour" =~ ^[0-9A-Fa-f]{6}$ ]] || die "aura color must be a 6-digit RGB value, e.g. 33ccff"
-  case "$mode" in
-    static) "$asusctl_bin" aura effect static --colour "$colour" ;;
-    breathe) "$asusctl_bin" aura effect breathe --colour "$colour" --colour2 000000 --speed med ;;
-    rainbow-cycle) "$asusctl_bin" aura effect rainbow-cycle --speed med ;;
-    rainbow-wave) "$asusctl_bin" aura effect rainbow-wave --direction right --speed med ;;
-    pulse) "$asusctl_bin" aura effect pulse --colour "$colour" ;;
-    *) die "aura mode must be static, breathe, rainbow-cycle, rainbow-wave, or pulse" ;;
-  esac
+  apply_aura_effect "$mode" "$colour"
+  aura_lock_enabled && write_aura_lock "$mode" "$colour" || true
   notify "Keyboard Aura: $mode"
 }
 
@@ -400,15 +463,18 @@ case "${1:-status}" in
   airplane|wireless) toggle_airplane ;;
   aura-static)
     [[ "${2:-}" =~ ^[0-9A-Fa-f]{6}$ ]] || die "aura-static requires a 6-digit RGB value, e.g. 33ccff"
-    "$asusctl_bin" aura effect static --colour "$2"
-    notify "Keyboard Aura: #$2"
+    set_aura_mode static "$2"
     ;;
   aura-mode)
     set_aura_mode "${2:-}" "${3:-ff2244}"
     ;;
   aura-next)
     "$asusctl_bin" aura effect --next-mode >/dev/null 2>&1
+    aura_lock_enabled && write_aura_lock "$(aura_mode_name)" "$(aura_color)" || true
     notify "Keyboard Aura: next effect"
+    ;;
+  aura-lock)
+    set_aura_lock "${2:-}"
     ;;
   slash)
     case "${2:-}" in
@@ -424,7 +490,7 @@ case "${1:-status}" in
     set_slash_brightness "${2:-}"
     ;;
   *)
-    printf '%s\n' 'Usage: g14ctl {status|gui|profile {adaptive|quiet|balanced|performance|next}|graphics {integrated|hybrid|ultimate}|keyboard {off|low|med|high|up|down|cycle}|aura-static RRGGBB|aura-mode MODE [RRGGBB]|aura-next|airplane|slash {on|off}|slash-mode MODE|slash-brightness 0-255}' >&2
+    printf '%s\n' 'Usage: g14ctl {status|gui|profile {adaptive|quiet|balanced|performance|next}|graphics {integrated|hybrid|ultimate}|keyboard {off|low|med|high|up|down|cycle}|aura-static RRGGBB|aura-mode MODE [RRGGBB]|aura-next|aura-lock {on|off|apply}|airplane|slash {on|off}|slash-mode MODE|slash-brightness 0-255}' >&2
     exit 2
     ;;
 esac

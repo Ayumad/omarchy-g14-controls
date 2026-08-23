@@ -14,6 +14,7 @@ Panel {
 
   property var anchorItem: null
   property var hostWidget: null
+  property string view: "all"
   property string profile: ""
   property bool adaptive: false
   property string gpuMode: ""
@@ -23,6 +24,7 @@ Panel {
   property string auraMode: "static"
   property string selectedAuraColor: "ff2244"
   property real selectedHue: 0.0
+  property bool auraLocked: false
   property string slashMode: "Bounce"
   property string slashBrightness: "255"
   property string slashEnabled: "unknown"
@@ -136,6 +138,7 @@ Panel {
       root.dgpuName = value.dgpu_name || ""
       root.keyboard = value.keyboard_brightness || ""
       root.auraMode = value.aura_mode || root.auraMode
+      root.auraLocked = value.aura_locked === true
       var firmwareColor = root.normalizedColor(value.aura_color)
       if (firmwareColor) {
         root.selectedAuraColor = firmwareColor
@@ -202,9 +205,9 @@ Panel {
     owner: root.hostWidget || root
     bar: root.bar
     open: root.opened
-    centerOnBar: true
+    centerOnBar: false
     focusTarget: keyCatcher
-    contentWidth: panel.fittedContentWidth(Style.space(460))
+    contentWidth: panel.fittedContentWidth(root.view === "all" ? Style.space(460) : Style.space(330))
     contentHeight: panel.fittedContentHeight(panelColumn.implicitHeight, Style.space(680))
 
     PanelKeyCatcher {
@@ -284,6 +287,7 @@ Panel {
           }
 
           Row {
+            visible: root.view === "all"
             width: parent.width
             spacing: Style.space(18)
 
@@ -308,6 +312,7 @@ Panel {
           PanelSeparator { foreground: root.contentForeground }
 
           Column {
+            visible: root.view === "all" || root.view === "profile"
             width: parent.width
             spacing: Style.space(8)
 
@@ -342,9 +347,13 @@ Panel {
             }
           }
 
-          PanelSeparator { foreground: root.contentForeground }
+          PanelSeparator {
+            visible: root.view === "all"
+            foreground: root.contentForeground
+          }
 
           Column {
+            visible: root.view === "all"
             width: parent.width
             spacing: Style.space(8)
 
@@ -379,9 +388,13 @@ Panel {
             }
           }
 
-          PanelSeparator { foreground: root.contentForeground }
+          PanelSeparator {
+            visible: root.view === "all"
+            foreground: root.contentForeground
+          }
 
           Column {
+            visible: root.view === "all"
             width: parent.width
             spacing: Style.space(8)
 
@@ -447,9 +460,22 @@ Panel {
                 }
               }
             }
+
+            Toggle {
+              width: parent.width
+              label: "LOCK COLOR ACROSS THEMES"
+              description: root.auraLocked
+                ? "Reapplies this keyboard lighting after every theme change"
+                : "Off — enable to preserve this lighting through theme changes"
+              checked: root.auraLocked
+              foreground: root.contentForeground
+              fontFamily: root.contentFontFamily
+              onClicked: root.runAction(["aura-lock", root.auraLocked ? "off" : "on"])
+            }
           }
 
           Button {
+            visible: root.view === "all"
             width: parent.width
             text: root.advancedOpen ? "HIDE ADVANCED CONTROLS" : "SHOW ADVANCED CONTROLS"
             fontSize: Style.font.caption
@@ -464,7 +490,7 @@ Panel {
 
           Column {
             id: advancedControls
-            visible: root.advancedOpen
+            visible: root.view === "all" && root.advancedOpen
             width: parent.width
             spacing: Style.space(8)
 
@@ -567,37 +593,44 @@ Panel {
               }
             }
 
-            Column {
+          }
+
+          Column {
+            visible: root.view === "graphics" || (root.view === "all" && root.advancedOpen)
+            width: parent.width
+            spacing: Style.space(8)
+
+            PanelSeparator {
+              visible: root.view === "graphics"
+              foreground: root.contentForeground
+            }
+
+            PanelSectionHeader {
+              text: "GRAPHICS MODE · REBOOT REQUIRED"
+              foreground: root.contentForeground
+              fontFamily: root.contentFontFamily
+            }
+
+            Flow {
+              id: gpuFlow
               width: parent.width
-              spacing: Style.space(8)
+              spacing: Style.space(6)
 
-              PanelSectionHeader {
-                text: "GRAPHICS MODE · REBOOT REQUIRED"
-                foreground: root.contentForeground
-                fontFamily: root.contentFontFamily
-              }
+              Repeater {
+                model: ["integrated", "hybrid", "ultimate"]
 
-              Flow {
-                id: gpuFlow
-                width: parent.width
-                spacing: Style.space(6)
-
-                Repeater {
-                  model: ["integrated", "hybrid", "ultimate"]
-
-                  Button {
-                    required property string modelData
-                    width: (gpuFlow.width - gpuFlow.spacing * 2) / 3
-                    text: modelData.toUpperCase()
-                    fontSize: Style.font.bodySmall
-                    foreground: root.contentForeground
-                    fontFamily: root.contentFontFamily
-                    horizontalPadding: Style.spacing.controlPaddingX
-                    verticalPadding: Style.spacing.controlPaddingY
-                    bordered: true
-                    active: root.gpuMode === modelData
-                    onClicked: root.runAction(["graphics", modelData])
-                  }
+                Button {
+                  required property string modelData
+                  width: (gpuFlow.width - gpuFlow.spacing * 2) / 3
+                  text: modelData.toUpperCase()
+                  fontSize: Style.font.bodySmall
+                  foreground: root.contentForeground
+                  fontFamily: root.contentFontFamily
+                  horizontalPadding: Style.spacing.controlPaddingX
+                  verticalPadding: Style.spacing.controlPaddingY
+                  bordered: true
+                  active: root.gpuMode === modelData
+                  onClicked: root.runAction(["graphics", modelData])
                 }
               }
             }

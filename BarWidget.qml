@@ -14,6 +14,7 @@ BarWidget {
   property string runtime: ""
   property string dgpuName: ""
   property string keyboard: ""
+  property var panelAnchor: null
   readonly property string rogLogoSource: "file:///usr/share/icons/hicolor/512x512/apps/rog-control-center.png"
   readonly property string configHome: Quickshell.env("XDG_CONFIG_HOME") || (Quickshell.env("HOME") + "/.config")
   readonly property string helperPath: configHome + "/omarchy/plugins/ayumad.g14-controls/g14ctl"
@@ -44,9 +45,29 @@ BarWidget {
     return root.gpuMode.toLowerCase() === "ultimate" || root.runtime === "active" ? "󰢮" : ""
   }
 
-  function open() { if (panelLoader.item) panelLoader.item.open() }
+  function openView(view, anchor) {
+    var target = panelLoader.item
+    if (!target) return
+    root.panelAnchor = anchor || deviceButton
+    if ("view" in target) target.view = view
+    root.injectPanel()
+    target.open()
+  }
+
+  function toggleView(view, anchor) {
+    var target = panelLoader.item
+    if (!target) return
+    var nextAnchor = anchor || deviceButton
+    if (target.opened && target.view === view && root.panelAnchor === nextAnchor) {
+      target.close()
+    } else {
+      root.openView(view, nextAnchor)
+    }
+  }
+
+  function open() { root.openView("all", deviceButton) }
   function close() { if (panelLoader.item) panelLoader.item.close() }
-  function toggle() { if (panelLoader.item) panelLoader.item.toggle() }
+  function toggle() { root.toggleView("all", deviceButton) }
 
   function refresh() {
     if (!statusProc.running) statusProc.running = true
@@ -57,9 +78,9 @@ BarWidget {
     runAction(["profile", "next"])
   }
 
-  function handleGlyphPress(mouseButton) {
+  function handleGlyphPress(mouseButton, view, anchor) {
     if (mouseButton === Qt.LeftButton) {
-      root.toggle()
+      root.toggleView(view, anchor)
     } else if (mouseButton === Qt.RightButton) {
       root.cycleProfile()
     } else if (mouseButton === Qt.MiddleButton) {
@@ -86,7 +107,7 @@ BarWidget {
     if (!target) return
     if ("bar" in target) target.bar = root.bar
     if ("settings" in target) target.settings = root.settings
-    if ("anchorItem" in target) target.anchorItem = deviceButton
+    if ("anchorItem" in target) target.anchorItem = root.panelAnchor || deviceButton
     if ("hostWidget" in target) target.hostWidget = root
   }
 
@@ -149,6 +170,8 @@ BarWidget {
     function show(): void { root.open() }
     function hide(): void { root.close() }
     function toggle(): void { root.toggle() }
+    function openProfile(): void { root.openView("profile", profileButton) }
+    function openGraphics(): void { root.openView("graphics", gpuButton) }
   }
 
   Row {
@@ -183,10 +206,11 @@ BarWidget {
         }
       }
       tooltipText: "G14 controls"
-      onPressed: function(mouseButton) { root.handleGlyphPress(mouseButton) }
+      onPressed: function(mouseButton) { root.handleGlyphPress(mouseButton, "all", deviceButton) }
     }
 
     BarIconButton {
+      id: profileButton
       bar: root.bar
       iconComponent: Component {
         Item {
@@ -212,14 +236,15 @@ BarWidget {
         }
       }
       tooltipText: root.profileTooltip()
-      onPressed: function(mouseButton) { root.handleGlyphPress(mouseButton) }
+      onPressed: function(mouseButton) { root.handleGlyphPress(mouseButton, "profile", profileButton) }
     }
 
     BarIconButton {
+      id: gpuButton
       bar: root.bar
       text: root.gpuGlyph()
       tooltipText: root.graphicsTooltip()
-      onPressed: function(mouseButton) { root.handleGlyphPress(mouseButton) }
+      onPressed: function(mouseButton) { root.handleGlyphPress(mouseButton, "graphics", gpuButton) }
     }
   }
 
