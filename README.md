@@ -41,8 +41,9 @@ color range rather than a UI theme color.
 - **Slash Lighting** — firmware-provided Slash modes, brightness levels, and
   explicit On/Off controls, shown in Advanced controls when supported.
 - **Graphics/MUX controls** — Integrated, Hybrid, and Ultimate/dGPU modes.
-  Changes are manual, require a reboot, and are blocked while NVIDIA compute
-  processes are running.
+  Selecting a mode queues the ASUS firmware change immediately and highlights
+  the queued target until the next reboot applies it; the running session is
+  left alone.
 - **Hardware-key ready** — the README includes the ROG-key binding; the panel
   also supports left-click to open, right-click to cycle profiles, and
   middle-click to refresh.

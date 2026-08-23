@@ -18,6 +18,7 @@ Panel {
   property string profile: ""
   property bool adaptive: false
   property string gpuMode: ""
+  property string gpuPending: ""
   property string runtime: ""
   property string dgpuName: ""
   property string keyboard: ""
@@ -33,6 +34,8 @@ Panel {
   readonly property string helperPath: configHome + "/omarchy/plugins/ayumad.g14-controls/g14ctl"
   property string message: ""
   property string errorMessage: ""
+  property string actionName: ""
+  property string previousGpuPending: ""
   property bool advancedOpen: false
   property bool setupOpen: false
   property int cursorIndex: 0
@@ -72,7 +75,8 @@ Panel {
 
   function runAction(args) {
     if (actionProc.running) return
-    root.message = "Applying…"
+    root.actionName = String(args[0] || "")
+    if (root.actionName !== "graphics") root.message = "Applying…"
     root.errorMessage = ""
     actionProc.command = [root.helperPath].concat(args)
     actionProc.running = true
@@ -156,6 +160,18 @@ Panel {
   function applySlashBrightness(value) {
     root.slashBrightness = String(value)
     root.runAction(["slash-brightness", root.slashBrightness])
+  }
+
+  function graphicsLabel(mode) {
+    return String(mode || "").toUpperCase()
+  }
+
+  function queueGraphics(mode) {
+    root.previousGpuPending = root.gpuPending
+    root.gpuPending = String(mode)
+    root.message = "Queued " + root.graphicsLabel(mode) + " for the next reboot"
+    root.errorMessage = ""
+    root.runAction(["graphics", mode])
   }
 
   function cursorCount() {
@@ -256,7 +272,7 @@ Panel {
         case 2: slashBrightnessDropdown.open(); return
         case 3: root.runAction(["slash", "on"]); return
         case 4: root.runAction(["slash", "off"]); return
-        default: root.runAction(["graphics", root.gpuChoices[root.cursorIndex - 15]]); return
+        default: root.queueGraphics(root.gpuChoices[root.cursorIndex - 15]); return
       }
     }
 
@@ -338,6 +354,7 @@ Panel {
       root.profile = value.profile || ""
       root.adaptive = value.adaptive === true
       root.gpuMode = value.gpu_mode || ""
+      root.gpuPending = value.gpu_pending || ""
       root.runtime = value.dgpu_runtime || value.nvidia_runtime || ""
       root.dgpuName = value.dgpu_name || ""
       root.keyboard = value.keyboard_brightness || ""
@@ -405,12 +422,14 @@ Panel {
     }
     onExited: function(exitCode, exitStatus) {
       if (exitCode === 0) {
-        root.message = "Applied"
+        if (!root.gpuPending) root.message = "Applied"
         root.errorMessage = ""
       } else {
+        if (root.actionName === "graphics") root.gpuPending = root.previousGpuPending
         root.message = ""
         root.errorMessage = String(actionStderr.text || "Action failed").trim()
       }
+      root.actionName = ""
       root.refresh()
     }
   }
@@ -891,13 +910,26 @@ Panel {
                   horizontalPadding: Style.spacing.controlPaddingX
                   verticalPadding: Style.spacing.controlPaddingY
                   bordered: true
-                  active: root.gpuMode === modelData
+                  active: (root.gpuPending || root.gpuMode) === modelData
                   hasCursor: root.cursorActive && (root.view === "graphics"
                     ? root.cursorIndex === root.gpuChoices.indexOf(modelData)
                     : root.cursorIndex === root.gpuChoices.indexOf(modelData) + 15)
-                  onClicked: root.runAction(["graphics", modelData])
+                  onClicked: root.queueGraphics(modelData)
                 }
               }
+            }
+
+            Text {
+              visible: root.gpuPending !== ""
+              width: parent.width
+              text: root.graphicsLabel(root.gpuPending) + " QUEUED · REBOOT TO APPLY"
+              color: root.contentForeground
+              opacity: 0.65
+              font.family: root.contentFontFamily
+              font.pixelSize: Style.font.caption
+              font.bold: true
+              horizontalAlignment: Text.AlignHCenter
+              wrapMode: Text.WordWrap
             }
           }
 

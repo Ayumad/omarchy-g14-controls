@@ -60,6 +60,7 @@ command -v jq >/dev/null 2>&1 || die "jq is required for status output"
 plugin_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 aura_lock_state_dir="${XDG_STATE_HOME:-${HOME}/.local/state}/ayumad.g14-controls"
 aura_lock_file="$aura_lock_state_dir/keyboard-lighting.lock"
+gpu_pending_file="$aura_lock_state_dir/gpu-mode.pending"
 aura_lock_hook="${XDG_CONFIG_HOME:-${HOME}/.config}/omarchy/hooks/theme-set.d/ayumad-g14-controls"
 aura_lock_hook_template="$plugin_dir/theme-set-hook"
 hypr_config_dir="${XDG_CONFIG_HOME:-${HOME}/.config}/hypr"
@@ -104,6 +105,33 @@ gpu_mode() {
   else
     printf 'unknown'
   fi
+}
+
+gpu_pending_mode() {
+  local requested="" current
+  [[ -r "$gpu_pending_file" ]] || { printf ''; return 0; }
+  IFS= read -r requested < "$gpu_pending_file" || true
+  case "$requested" in
+    integrated|hybrid|ultimate) ;;
+    *) printf ''; return 0 ;;
+  esac
+
+  # asusd applies GPU attributes during shutdown/boot. Once the running state
+  # matches the saved request, the marker has done its job.
+  current=$(gpu_mode)
+  if [[ "$requested" == "$current" ]]; then
+    rm -f -- "$gpu_pending_file"
+    return
+  fi
+  printf '%s' "$requested"
+}
+
+write_gpu_pending() {
+  local requested="$1" temporary
+  mkdir -p "$aura_lock_state_dir"
+  temporary=$(mktemp "$aura_lock_state_dir/.gpu-mode.XXXXXX")
+  (umask 077; printf '%s\n' "$requested" > "$temporary")
+  mv -f "$temporary" "$gpu_pending_file"
 }
 
 profile_name() {
@@ -315,10 +343,11 @@ dgpu_runtime() {
 }
 
 status_json() {
-  local profile adaptive mode disabled mux runtime dgpu keyboard aura colour aura_locked slash brightness enabled
+  local profile adaptive mode pending disabled mux runtime dgpu keyboard aura colour aura_locked slash brightness enabled
   profile=$(profile_name)
   adaptive=$(adaptive_profile_enabled)
   mode=$(gpu_mode)
+  pending=$(gpu_pending_mode)
   disabled=$(sysfs_value dgpu_disable)
   mux=$(sysfs_value gpu_mux_mode)
   runtime=$(dgpu_runtime)
@@ -334,6 +363,7 @@ status_json() {
     --arg profile "$profile" \
     --argjson adaptive "$adaptive" \
     --arg mode "$mode" \
+    --arg gpu_pending "$pending" \
     --arg disabled "$disabled" \
     --arg mux "$mux" \
     --arg runtime "$runtime" \
@@ -345,7 +375,7 @@ status_json() {
     --arg slash_mode "$slash" \
     --arg slash_brightness "$brightness" \
     --arg slash_enabled "$enabled" \
-    '{profile:$profile,adaptive:$adaptive,gpu_mode:$mode,dgpu_disable:$disabled,gpu_mux_mode:$mux,dgpu_name:$dgpu,dgpu_runtime:$runtime,nvidia_runtime:$runtime,keyboard_brightness:$keyboard,aura_mode:$aura_mode,aura_color:$aura_color,aura_locked:$aura_locked,slash_mode:$slash_mode,slash_brightness:$slash_brightness,slash_enabled:$slash_enabled}'
+    '{profile:$profile,adaptive:$adaptive,gpu_mode:$mode,gpu_pending:$gpu_pending,dgpu_disable:$disabled,gpu_mux_mode:$mux,dgpu_name:$dgpu,dgpu_runtime:$runtime,nvidia_runtime:$runtime,keyboard_brightness:$keyboard,aura_mode:$aura_mode,aura_color:$aura_color,aura_locked:$aura_locked,slash_mode:$slash_mode,slash_brightness:$slash_brightness,slash_enabled:$slash_enabled}'
 }
 
 set_profile() {
@@ -383,12 +413,12 @@ set_graphics() {
     ultimate|discrete) disabled=0; mux=0; requested=ultimate ;;
     *) die "graphics must be integrated, hybrid, or ultimate" ;;
   esac
-  if command -v nvidia-smi >/dev/null 2>&1 \
-    && nvidia-smi --query-compute-apps=pid --format=csv,noheader 2>/dev/null | grep -q '[0-9]'; then
-    die "NVIDIA processes are active; close them before scheduling a GPU mode change"
-  fi
+  # asusd deliberately queues these GPU attributes and applies them on the
+  # next shutdown/boot. Do not reject a request just because NVIDIA is busy;
+  # the active session remains untouched until that reboot.
   "$asusctl_bin" armoury set dgpu_disable "$disabled"
   "$asusctl_bin" armoury set gpu_mux_mode "$mux"
+  write_gpu_pending "$requested"
   notify "GPU mode scheduled: $requested (reboot required)"
 }
 
