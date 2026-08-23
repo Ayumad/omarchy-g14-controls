@@ -36,7 +36,7 @@ machine.
 ## Install
 
 ```sh
-omarchy plugin add https://github.com/<owner>/omarchy-g14-controls.git --enable
+omarchy plugin add https://github.com/Ayumad/omarchy-g14-controls.git --enable
 omarchy bar move ayumad.g14-controls --section right
 ```
 

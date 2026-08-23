@@ -102,6 +102,29 @@ aura_mode_name() {
   esac
 }
 
+aura_color() {
+  local config mode block r g b
+  config=$(aura_config)
+  [[ -r "$config" ]] || { printf 'ff2244'; return; }
+  mode=$(sed -n 's/.*current_mode:[[:space:]]*\([A-Za-z0-9_]*\),.*/\1/p' "$config" | head -n1)
+  [[ -n "$mode" ]] || { printf 'ff2244'; return; }
+  block=$(awk -v mode="$mode" '
+    $0 ~ "^[[:space:]]*" mode ":[[:space:]]*\\(" { inside=1; next }
+    inside && /colour1:[[:space:]]*\(/ { colour=1; next }
+    colour && /colour2:[[:space:]]*\(/ { exit }
+    colour { print }
+  ' "$config")
+  r=$(printf '%s\n' "$block" | sed -n 's/.*r:[[:space:]]*\([0-9][0-9]*\),.*/\1/p' | head -n1)
+  g=$(printf '%s\n' "$block" | sed -n 's/.*g:[[:space:]]*\([0-9][0-9]*\),.*/\1/p' | head -n1)
+  b=$(printf '%s\n' "$block" | sed -n 's/.*b:[[:space:]]*\([0-9][0-9]*\),.*/\1/p' | head -n1)
+  if [[ "$r" =~ ^[0-9]+$ && "$g" =~ ^[0-9]+$ && "$b" =~ ^[0-9]+$ ]] \
+    && ((r <= 255 && g <= 255 && b <= 255)); then
+    printf '%02x%02x%02x' "$r" "$g" "$b"
+  else
+    printf 'ff2244'
+  fi
+}
+
 slash_mode_name() {
   local mode
   mode=$(sed -n 's/.*display_mode:[[:space:]]*\([A-Za-z0-9_]*\),.*/\1/p' /etc/asusd/slash.ron 2>/dev/null | head -n1)
@@ -133,7 +156,7 @@ nvidia_runtime() {
 }
 
 status_json() {
-  local profile mode disabled mux runtime keyboard aura slash brightness enabled
+  local profile mode disabled mux runtime keyboard aura colour slash brightness enabled
   profile=$(profile_name)
   mode=$(gpu_mode)
   disabled=$(sysfs_value dgpu_disable)
@@ -141,6 +164,7 @@ status_json() {
   runtime=$(nvidia_runtime)
   keyboard=$(keyboard_level)
   aura=$(aura_mode_name)
+  colour=$(aura_color)
   slash=$(slash_mode_name)
   brightness=$(slash_brightness)
   enabled=$(slash_enabled)
@@ -152,10 +176,11 @@ status_json() {
     --arg runtime "$runtime" \
     --arg keyboard "$keyboard" \
     --arg aura_mode "$aura" \
+    --arg aura_color "$colour" \
     --arg slash_mode "$slash" \
     --arg slash_brightness "$brightness" \
     --arg slash_enabled "$enabled" \
-    '{profile:$profile,gpu_mode:$mode,dgpu_disable:$disabled,gpu_mux_mode:$mux,nvidia_runtime:$runtime,keyboard_brightness:$keyboard,aura_mode:$aura_mode,slash_mode:$slash_mode,slash_brightness:$slash_brightness,slash_enabled:$slash_enabled}'
+    '{profile:$profile,gpu_mode:$mode,dgpu_disable:$disabled,gpu_mux_mode:$mux,nvidia_runtime:$runtime,keyboard_brightness:$keyboard,aura_mode:$aura_mode,aura_color:$aura_color,slash_mode:$slash_mode,slash_brightness:$slash_brightness,slash_enabled:$slash_enabled}'
 }
 
 set_profile() {

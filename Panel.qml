@@ -111,6 +111,11 @@ Panel {
       root.runtime = value.nvidia_runtime || ""
       root.keyboard = value.keyboard_brightness || ""
       root.auraMode = value.aura_mode || root.auraMode
+      var firmwareColor = root.normalizedColor(value.aura_color)
+      if (firmwareColor) {
+        root.selectedAuraColor = firmwareColor
+        auraHexField.text = "#" + firmwareColor
+      }
       root.slashMode = value.slash_mode || root.slashMode
       root.slashBrightness = value.slash_brightness || root.slashBrightness
       root.slashEnabled = value.slash_enabled || root.slashEnabled
@@ -327,6 +332,7 @@ Panel {
                   horizontalPadding: Style.spacing.controlPaddingX
                   verticalPadding: Style.spacing.controlPaddingY
                   bordered: true
+                  active: root.keyboard.toLowerCase() === modelData
                   onClicked: root.runAction(["keyboard", modelData])
                 }
               }
