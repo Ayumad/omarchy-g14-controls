@@ -185,7 +185,7 @@ Panel {
     PanelKeyCatcher {
       id: keyCatcher
       anchors.fill: parent
-      blocked: auraModeDropdown.popupOpen || auraColorDropdown.popupOpen
+      blocked: auraModeDropdown.popupOpen
         || slashModeDropdown.popupOpen || slashBrightnessDropdown.popupOpen
         || auraHexField.activeFocus
       onMoveRequested: function(dx, dy) {}
@@ -351,30 +351,80 @@ Panel {
               fontFamily: root.contentFontFamily
             }
 
-            Row {
+            Dropdown {
+              id: auraModeDropdown
+              width: parent.width
+              label: "EFFECT"
+              value: root.auraMode
+              options: root.auraModes
+              foreground: root.contentForeground
+              fontFamily: root.contentFontFamily
+              onChanged: root.applyAuraMode(value)
+            }
+
+            Text {
+              text: "COLOR"
+              color: Qt.darker(root.contentForeground, 1.4)
+              font.family: root.contentFontFamily
+              font.pixelSize: Style.font.caption
+              font.bold: true
+            }
+
+            Flow {
+              id: auraColorFlow
               width: parent.width
               spacing: Style.space(8)
 
-              Dropdown {
-                id: auraModeDropdown
-                width: (parent.width - parent.spacing) / 2
-                label: "EFFECT"
-                value: root.auraMode
-                options: root.auraModes
-                foreground: root.contentForeground
-                fontFamily: root.contentFontFamily
-                onChanged: root.applyAuraMode(value)
-              }
+              Repeater {
+                model: root.auraColors
 
-              Dropdown {
-                id: auraColorDropdown
-                width: (parent.width - parent.spacing) / 2
-                label: "COLOR"
-                value: root.selectedAuraColor
-                options: root.auraColors
-                foreground: root.contentForeground
-                fontFamily: root.contentFontFamily
-                onChanged: root.applyAuraColor(value)
+                Item {
+                  required property var modelData
+                  readonly property bool selected: root.selectedAuraColor === modelData.value
+                  width: Style.space(36)
+                  height: Style.space(44)
+
+                  Rectangle {
+                    id: swatch
+                    width: Style.space(24)
+                    height: width
+                    radius: Style.cornerRadius
+                    anchors.top: parent.top
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    color: "#" + modelData.value
+                    border.width: parent.selected ? Style.space(2) : Style.normalBorderWidth
+                    border.color: parent.selected
+                      ? root.contentForeground
+                      : Qt.rgba(root.contentForeground.r, root.contentForeground.g, root.contentForeground.b, 0.35)
+                  }
+
+                  Text {
+                    anchors.top: swatch.bottom
+                    anchors.topMargin: Style.space(3)
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    text: modelData.label
+                    color: root.contentForeground
+                    font.family: root.contentFontFamily
+                    font.pixelSize: Style.font.caption
+                    font.bold: parent.selected
+                    horizontalAlignment: Text.AlignHCenter
+                    elide: Text.ElideRight
+                  }
+
+                  MouseArea {
+                    id: swatchMouse
+                    anchors.fill: parent
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: root.applyAuraColor(modelData.value)
+                  }
+
+                  ToolTip {
+                    visible: swatchMouse.containsMouse
+                    text: modelData.label + "  (#" + modelData.value + ")"
+                    delay: 350
+                  }
+                }
               }
             }
 
@@ -382,9 +432,20 @@ Panel {
               width: parent.width
               spacing: Style.space(8)
 
+              Rectangle {
+                id: customColorPreview
+                width: Style.space(34)
+                height: Style.space(34)
+                radius: Style.cornerRadius
+                anchors.verticalCenter: parent.verticalCenter
+                color: "#" + root.selectedAuraColor
+                border.width: Style.normalBorderWidth
+                border.color: Qt.rgba(root.contentForeground.r, root.contentForeground.g, root.contentForeground.b, 0.45)
+              }
+
               TextField {
                 id: auraHexField
-                width: parent.width - applyColorButton.width - parent.spacing
+                width: parent.width - customColorPreview.width - applyColorButton.width - parent.spacing * 2
                 text: "#" + root.selectedAuraColor
                 placeholderText: "#RRGGBB"
                 foreground: root.contentForeground

@@ -9,7 +9,7 @@ Click it (or press the configured ROG key) to open a Quickshell panel.
 
 - Quiet, Balanced, and Performance profiles
 - Keyboard backlight off/low/medium/high
-- Aura effect selector, preset colors, custom `#RRGGBB`, and next effect
+- Aura effect selector, visual color swatches, custom `#RRGGBB`, and next effect
 - Slash LED on/off, all modes exposed by the G14 firmware, and brightness
 - Integrated, Hybrid, and Ultimate graphics modes
 - Optional airplane-mode toggle through `rfkill`
