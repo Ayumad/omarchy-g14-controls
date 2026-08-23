@@ -253,7 +253,7 @@ BarWidget {
             Text {
               anchors.centerIn: parent
               anchors.verticalCenterOffset: -Style.space(1)
-              text: "↻"
+              text: "󱣲"
               color: root.bar ? root.bar.foreground : Color.foreground
               font.family: root.bar ? root.bar.fontFamily : Style.font.family
               font.pixelSize: Style.bar.iconFont

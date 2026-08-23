@@ -34,12 +34,14 @@ Panel {
   property string message: ""
   property string errorMessage: ""
   property bool advancedOpen: false
+  property bool setupOpen: false
   property int cursorIndex: 0
   property bool cursorActive: false
 
   readonly property var profileChoices: ["Quiet", "Balanced", "Performance", "Adaptive"]
   readonly property var keyboardLevels: ["off", "low", "med", "high"]
   readonly property var gpuChoices: ["integrated", "hybrid", "ultimate"]
+  readonly property int advancedControlCount: 8
 
   readonly property var auraModes: [
     { value: "static", label: "Static" },
@@ -133,7 +135,7 @@ Panel {
   }
 
   function profileOptionGlyph(profileName) {
-    return profileName === "Adaptive" ? "↻" : {
+    return profileName === "Adaptive" ? "󱣲" : {
       "Quiet": "󰌪",
       "Balanced": "󰊚",
       "Performance": "󰓅"
@@ -159,7 +161,29 @@ Panel {
   function cursorCount() {
     if (root.view === "profile") return root.profileChoices.length
     if (root.view === "graphics") return root.gpuChoices.length
-    return root.advancedOpen ? 21 : 10
+    return root.setupStartIndex() + (root.setupOpen ? 3 : 0)
+  }
+
+  function setupToggleIndex() {
+    return 10 + (root.advancedOpen ? root.advancedControlCount : 0)
+  }
+
+  function setupStartIndex() {
+    return root.setupToggleIndex() + 1
+  }
+
+  // Keep the complete panel concise enough to fit without making either
+  // disclosure section a second scrolling menu.
+  function toggleAdvanced() {
+    root.advancedOpen = !root.advancedOpen
+    if (root.advancedOpen) root.setupOpen = false
+    root.cursorIndex = 9
+  }
+
+  function toggleSetup() {
+    root.setupOpen = !root.setupOpen
+    if (root.setupOpen) root.advancedOpen = false
+    root.cursorIndex = root.setupToggleIndex()
   }
 
   function activeProfileIndex() {
@@ -220,25 +244,33 @@ Panel {
     } else if (root.cursorIndex === 8) {
       root.applyAuraColor(root.hueToColor(root.selectedHue))
     } else if (root.cursorIndex === 9) {
-      root.advancedOpen = !root.advancedOpen
-    } else if (root.cursorIndex === 10) {
-      auraModeDropdown.open()
-    } else if (root.cursorIndex === 11) {
-      slashModeDropdown.open()
-    } else if (root.cursorIndex === 12) {
-      slashBrightnessDropdown.open()
-    } else if (root.cursorIndex === 13) {
-      root.runAction(["slash", "on"])
-    } else if (root.cursorIndex === 14) {
-      root.runAction(["slash", "off"])
-    } else if (root.cursorIndex === 15) {
-      root.runAction(["aura-lock", root.auraLocked ? "off" : "on"])
-    } else if (root.cursorIndex === 16) {
-      root.launchHotkeyCapture()
-    } else if (root.cursorIndex === 17) {
-      root.launchHotkeySetup()
-    } else {
-      root.runAction(["graphics", root.gpuChoices[root.cursorIndex - 18]])
+      root.toggleAdvanced()
+      return
+    }
+
+    if (root.advancedOpen && root.cursorIndex >= 10
+        && root.cursorIndex < 10 + root.advancedControlCount) {
+      switch (root.cursorIndex - 10) {
+        case 0: auraModeDropdown.open(); return
+        case 1: slashModeDropdown.open(); return
+        case 2: slashBrightnessDropdown.open(); return
+        case 3: root.runAction(["slash", "on"]); return
+        case 4: root.runAction(["slash", "off"]); return
+        default: root.runAction(["graphics", root.gpuChoices[root.cursorIndex - 15]]); return
+      }
+    }
+
+    if (root.cursorIndex === root.setupToggleIndex()) {
+      root.toggleSetup()
+      return
+    }
+
+    if (root.setupOpen) {
+      switch (root.cursorIndex - root.setupStartIndex()) {
+        case 0: root.runAction(["aura-lock", root.auraLocked ? "off" : "on"]); return
+        case 1: root.launchHotkeyCapture(); return
+        case 2: root.launchHotkeySetup(); return
+      }
     }
   }
 
@@ -249,15 +281,26 @@ Panel {
     if (root.cursorIndex < 8) return keyboardButtons.itemAt(root.cursorIndex - 4)
     if (root.cursorIndex === 8) return hueSlider
     if (root.cursorIndex === 9) return advancedButton
-    if (root.cursorIndex === 10) return auraModeDropdown
-    if (root.cursorIndex === 11) return slashModeDropdown
-    if (root.cursorIndex === 12) return slashBrightnessDropdown
-    if (root.cursorIndex === 13) return slashOnButton
-    if (root.cursorIndex === 14) return slashOffButton
-    if (root.cursorIndex === 15) return colorLockButton
-    if (root.cursorIndex === 16) return captureHotkeysButton
-    if (root.cursorIndex === 17) return setupHotkeysButton
-    return gpuButtons.itemAt(root.cursorIndex - 18)
+    if (root.advancedOpen && root.cursorIndex >= 10
+        && root.cursorIndex < 10 + root.advancedControlCount) {
+      switch (root.cursorIndex - 10) {
+        case 0: return auraModeDropdown
+        case 1: return slashModeDropdown
+        case 2: return slashBrightnessDropdown
+        case 3: return slashOnButton
+        case 4: return slashOffButton
+        default: return gpuButtons.itemAt(root.cursorIndex - 15)
+      }
+    }
+    if (root.cursorIndex === root.setupToggleIndex()) return setupSectionButton
+    if (root.setupOpen) {
+      switch (root.cursorIndex - root.setupStartIndex()) {
+        case 0: return colorLockButton
+        case 1: return captureHotkeysButton
+        case 2: return setupHotkeysButton
+      }
+    }
+    return null
   }
 
   function launchHotkeyCapture() {
@@ -335,6 +378,10 @@ Panel {
 
   onViewChanged: root.resetCursor()
   onAdvancedOpenChanged: {
+    root.clampCursor()
+    Qt.callLater(root.ensureCursorVisible)
+  }
+  onSetupOpenChanged: {
     root.clampCursor()
     Qt.callLater(root.ensureCursorVisible)
   }
@@ -692,7 +739,7 @@ Panel {
             bordered: true
             active: root.advancedOpen
             hasCursor: root.cursorActive && root.cursorIndex === 9
-            onClicked: root.advancedOpen = !root.advancedOpen
+            onClicked: root.toggleAdvanced()
           }
 
           Column {
@@ -807,56 +854,6 @@ Panel {
               }
             }
 
-            Row {
-              width: parent.width
-              spacing: Style.space(6)
-
-              Button {
-                id: colorLockButton
-                text: root.auraLocked ? "COLOR LOCKED" : "LOCK COLOR"
-                tooltipText: root.auraLocked
-                  ? "Keyboard color lock is on — click to turn it off"
-                  : "Keep the current keyboard lighting across theme changes"
-                fontSize: Style.font.caption
-                foreground: root.contentForeground
-                fontFamily: root.contentFontFamily
-                horizontalPadding: Style.space(8)
-                verticalPadding: Style.space(5)
-                bordered: true
-                active: root.auraLocked
-                hasCursor: root.cursorActive && root.cursorIndex === 15
-                onClicked: root.runAction(["aura-lock", root.auraLocked ? "off" : "on"])
-              }
-
-              Button {
-                id: captureHotkeysButton
-                text: "CAPTURE KEYS"
-                tooltipText: "Open wev to identify your physical G14 key symbols"
-                fontSize: Style.font.caption
-                foreground: root.contentForeground
-                fontFamily: root.contentFontFamily
-                horizontalPadding: Style.space(8)
-                verticalPadding: Style.space(5)
-                bordered: true
-                hasCursor: root.cursorActive && root.cursorIndex === 16
-                onClicked: root.launchHotkeyCapture()
-              }
-
-              Button {
-                id: setupHotkeysButton
-                text: "SET UP HOTKEYS"
-                tooltipText: "Guided, opt-in G14 hotkey setup with a backup and confirmation"
-                fontSize: Style.font.caption
-                foreground: root.contentForeground
-                fontFamily: root.contentFontFamily
-                horizontalPadding: Style.space(8)
-                verticalPadding: Style.space(5)
-                bordered: true
-                hasCursor: root.cursorActive && root.cursorIndex === 17
-                onClicked: root.launchHotkeySetup()
-              }
-            }
-
           }
 
           Column {
@@ -897,9 +894,90 @@ Panel {
                   active: root.gpuMode === modelData
                   hasCursor: root.cursorActive && (root.view === "graphics"
                     ? root.cursorIndex === root.gpuChoices.indexOf(modelData)
-                    : root.cursorIndex === root.gpuChoices.indexOf(modelData) + 18)
+                    : root.cursorIndex === root.gpuChoices.indexOf(modelData) + 15)
                   onClicked: root.runAction(["graphics", modelData])
                 }
+              }
+            }
+          }
+
+          Button {
+            id: setupSectionButton
+            visible: root.view === "all"
+            width: parent.width
+            text: root.setupOpen ? "HIDE SETUP" : "SHOW SETUP"
+            fontSize: Style.font.caption
+            foreground: root.contentForeground
+            fontFamily: root.contentFontFamily
+            horizontalPadding: Style.spacing.controlPaddingX
+            verticalPadding: Style.spacing.controlPaddingY
+            bordered: true
+            active: root.setupOpen
+            hasCursor: root.cursorActive && root.cursorIndex === root.setupToggleIndex()
+            onClicked: root.toggleSetup()
+          }
+
+          Column {
+            id: setupControls
+            visible: root.view === "all" && root.setupOpen
+            width: parent.width
+            spacing: Style.space(8)
+
+            PanelSeparator { foreground: root.contentForeground }
+
+            PanelSectionHeader {
+              text: "SETUP"
+              foreground: root.contentForeground
+              fontFamily: root.contentFontFamily
+            }
+
+            Row {
+              width: parent.width
+              spacing: Style.space(6)
+
+              Button {
+                id: colorLockButton
+                text: root.auraLocked ? "COLOR LOCKED" : "LOCK COLOR"
+                tooltipText: root.auraLocked
+                  ? "Keyboard color lock is on — click to turn it off"
+                  : "Keep the current keyboard lighting across theme changes"
+                fontSize: Style.font.caption
+                foreground: root.contentForeground
+                fontFamily: root.contentFontFamily
+                horizontalPadding: Style.space(8)
+                verticalPadding: Style.space(5)
+                bordered: true
+                active: root.auraLocked
+                hasCursor: root.cursorActive && root.cursorIndex === root.setupStartIndex()
+                onClicked: root.runAction(["aura-lock", root.auraLocked ? "off" : "on"])
+              }
+
+              Button {
+                id: captureHotkeysButton
+                text: "CAPTURE KEYS"
+                tooltipText: "Open wev to identify your physical G14 key symbols"
+                fontSize: Style.font.caption
+                foreground: root.contentForeground
+                fontFamily: root.contentFontFamily
+                horizontalPadding: Style.space(8)
+                verticalPadding: Style.space(5)
+                bordered: true
+                hasCursor: root.cursorActive && root.cursorIndex === root.setupStartIndex() + 1
+                onClicked: root.launchHotkeyCapture()
+              }
+
+              Button {
+                id: setupHotkeysButton
+                text: "SET UP HOTKEYS"
+                tooltipText: "Guided, opt-in G14 hotkey setup with a backup and confirmation"
+                fontSize: Style.font.caption
+                foreground: root.contentForeground
+                fontFamily: root.contentFontFamily
+                horizontalPadding: Style.space(8)
+                verticalPadding: Style.space(5)
+                bordered: true
+                hasCursor: root.cursorActive && root.cursorIndex === root.setupStartIndex() + 2
+                onClicked: root.launchHotkeySetup()
               }
             }
           }

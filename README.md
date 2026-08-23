@@ -1,4 +1,14 @@
-# G14 Controls for Omarchy
+<p align="center">
+  <img src="assets/rog-control-center.png" alt="ROG mark" width="112">
+</p>
+
+<h1 align="center">G14 Controls</h1>
+
+<p align="center"><strong>ASUS G14 controls that feel native to Omarchy.</strong></p>
+
+<p align="center">
+  <code>Live status</code> · <code>Adaptive power</code> · <code>Aura &amp; Slash</code> · <code>GPU / MUX</code>
+</p>
 
 Native Omarchy bar controls for ASUS ROG Zephyrus G14 laptops using the
 supported `asusctl`/`asusd` stack. It adds a compact Quickshell control panel
@@ -36,7 +46,7 @@ color range rather than a UI theme color.
 - **Hardware-key ready** — the README includes the ROG-key binding; the panel
   also supports left-click to open, right-click to cycle profiles, and
   middle-click to refresh.
-- **Guided G14 hotkeys** — Advanced controls can launch `wev` to capture the
+- **Guided G14 hotkeys** — the separate Setup section can launch `wev` to capture the
   laptop's actual key symbols, then open a confirmation-first setup wizard.
   It offers common G14 defaults, lets users customize or skip each mapping,
   backs up `bindings.lua`, and replaces only its own marked binding block.
@@ -52,13 +62,15 @@ color range rather than a UI theme color.
   lighting across Omarchy theme changes. The lock creates one user-owned
   `theme-set` hook only while enabled; changing color or effect while locked
   updates the saved lighting, and disabling it removes that hook and state.
-  Its compact toggle lives in Advanced controls.
+  Its compact toggle lives in the separate Setup section.
 - **Optional airplane mode** through `rfkill`.
 
 The default panel is deliberately compact: profile, keyboard backlight, and a
 visual keyboard-color slider are always visible. **Advanced controls** opens
-one short section for Aura effects, Slash controls, optional G14 hotkeys, and
-graphics mode.
+one short section for Aura effects, Slash controls, and graphics mode.
+**Setup** is its own short section for keyboard-color persistence and optional
+G14 physical-key configuration; opening one section closes the other so the
+panel remains compact.
 
 Graphics mode changes are deliberately manual and require a reboot. The
 plugin never switches graphics mode automatically, changes fan curves/TGP/CPU
@@ -106,7 +118,7 @@ it asks for final confirmation first.
 
 ## Optional guided G14 hotkey setup
 
-In **Advanced controls**, choose **Capture Keys** to open `wev`, press each
+In the separate **Setup** section, choose **Capture Keys** to open `wev`, press each
 physical special key, and note its symbol. Then choose **Set Up Hotkeys**. The
 terminal wizard proposes the common G14 layout, but lets you enter the symbols
 you captured or use `-` to skip a mapping:
