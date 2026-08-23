@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Effects
 import Quickshell
 import Quickshell.Io
 import qs.Commons
@@ -13,7 +14,6 @@ BarWidget {
   property string dgpuName: ""
   property string keyboard: ""
   readonly property string rogLogoSource: "file:///usr/share/icons/hicolor/512x512/apps/rog-control-center.png"
-  readonly property string rogBarLogoSource: "file:///usr/share/icons/hicolor/512x512/apps/asus_notif_white.png"
   readonly property string configHome: Quickshell.env("XDG_CONFIG_HOME") || (Quickshell.env("HOME") + "/.config")
   readonly property string helperPath: configHome + "/omarchy/plugins/ayumad.g14-controls/g14ctl"
   property int refreshIntervalSec: Number(setting("refreshIntervalSec", 10))
@@ -32,12 +32,12 @@ BarWidget {
     }
   }
 
-  function gpuGlyph() {
+  function gpuIconSource() {
     switch (root.gpuMode.toLowerCase()) {
-      case "integrated": return "󰍛"
-      case "hybrid": return "󰢮"
-      case "ultimate": return "󰓅"
-      default: return "󰋗"
+      case "integrated": return "file:///usr/share/icons/hicolor/scalable/status/gpu-integrated.svg"
+      case "hybrid": return "file:///usr/share/icons/hicolor/scalable/status/gpu-hybrid.svg"
+      case "ultimate": return "file:///usr/share/icons/hicolor/scalable/status/gpu-nvidia.svg"
+      default: return ""
     }
   }
 
@@ -152,11 +152,25 @@ BarWidget {
       bar: root.bar
       opticalSize: Style.space(20)
       iconComponent: Component {
-        Image {
-          source: root.rogBarLogoSource
-          fillMode: Image.PreserveAspectFit
-          smooth: true
-          mipmap: true
+        Item {
+          Image {
+            id: rogMark
+            anchors.fill: parent
+            source: root.rogLogoSource
+            fillMode: Image.PreserveAspectFit
+            smooth: true
+            mipmap: true
+            visible: false
+            layer.enabled: true
+          }
+
+          MultiEffect {
+            anchors.fill: rogMark
+            source: rogMark
+            autoPaddingEnabled: false
+            colorization: 1.0
+            colorizationColor: root.bar ? root.bar.foreground : Color.foreground
+          }
         }
       }
       tooltipText: "G14 controls"
@@ -172,7 +186,27 @@ BarWidget {
 
     BarIconButton {
       bar: root.bar
-      text: root.gpuGlyph()
+      iconComponent: Component {
+        Item {
+          Image {
+            id: gpuMark
+            anchors.fill: parent
+            source: root.gpuIconSource()
+            fillMode: Image.PreserveAspectFit
+            smooth: true
+            visible: false
+            layer.enabled: true
+          }
+
+          MultiEffect {
+            anchors.fill: gpuMark
+            source: gpuMark
+            autoPaddingEnabled: false
+            colorization: 1.0
+            colorizationColor: root.bar ? root.bar.foreground : Color.foreground
+          }
+        }
+      }
       tooltipText: root.graphicsTooltip()
       onPressed: function(mouseButton) { root.handleGlyphPress(mouseButton) }
     }
