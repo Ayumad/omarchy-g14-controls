@@ -23,6 +23,7 @@ Panel {
   property string slashMode: "Bounce"
   property string slashBrightness: "255"
   property string slashEnabled: "unknown"
+  readonly property string rogLogoSource: "file:///usr/share/icons/hicolor/512x512/apps/rog-control-center.png"
   readonly property string configHome: Quickshell.env("XDG_CONFIG_HOME") || (Quickshell.env("HOME") + "/.config")
   readonly property string helperPath: configHome + "/omarchy/plugins/ayumad.g14-controls/g14ctl"
   property string message: ""
@@ -225,14 +226,16 @@ Panel {
 
           Item {
             width: parent.width
-            implicitHeight: heroLabels.implicitHeight
+            implicitHeight: Math.max(heroIcon.height, heroLabels.implicitHeight)
 
-            Text {
+            Image {
               id: heroIcon
-              text: "󰣇"
-              color: root.contentForeground
-              font.family: root.contentFontFamily
-              font.pixelSize: Style.font.display
+              width: Style.space(34)
+              height: width
+              source: root.rogLogoSource
+              fillMode: Image.PreserveAspectFit
+              smooth: true
+              mipmap: true
               anchors.left: parent.left
               anchors.verticalCenter: parent.verticalCenter
             }

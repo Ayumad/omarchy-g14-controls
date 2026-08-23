@@ -30,7 +30,7 @@ remain hidden rather than being emulated.
 ## Requirements
 
 - Omarchy Quattro and its Quickshell shell
-- `asusd` running with `asusctl` available on `PATH`
+- `asusd` running with `asusctl` and `rog-control-center` installed
 - `jq` for status serialization
 - ASUS WMI support for the controls exposed by the specific laptop
 
