@@ -402,6 +402,7 @@ Panel {
                   height: Style.space(10)
                   radius: height / 2
                   gradient: Gradient {
+                    orientation: Gradient.Horizontal
                     GradientStop { position: 0.00; color: "#ff2244" }
                     GradientStop { position: 0.16; color: "#ffee33" }
                     GradientStop { position: 0.33; color: "#33dd66" }
