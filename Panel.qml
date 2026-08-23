@@ -33,9 +33,9 @@ Panel {
 
   readonly property var auraModes: [
     { value: "static", label: "Static" },
-    { value: "breathe", label: "Breathe" },
-    { value: "rainbow-cycle", label: "Rainbow cycle" },
-    { value: "rainbow-wave", label: "Rainbow wave" },
+    { value: "breathe", label: "Breathing" },
+    { value: "rainbow-cycle", label: "Color Cycle" },
+    { value: "rainbow-wave", label: "Rainbow" },
     { value: "pulse", label: "Pulse" }
   ]
   readonly property var slashModes: [
@@ -469,7 +469,7 @@ Panel {
               Dropdown {
                 id: auraModeDropdown
                 width: (parent.width - parent.spacing) / 2
-                label: "AURA"
+                label: "KEYBOARD MODE"
                 value: root.auraMode
                 options: root.auraModes
                 foreground: root.contentForeground

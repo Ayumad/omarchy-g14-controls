@@ -13,6 +13,7 @@ BarWidget {
   property string dgpuName: ""
   property string keyboard: ""
   readonly property string rogLogoSource: "file:///usr/share/icons/hicolor/512x512/apps/rog-control-center.png"
+  readonly property string rogBarLogoSource: "file:///usr/share/icons/hicolor/512x512/apps/asus_notif_white.png"
   readonly property string configHome: Quickshell.env("XDG_CONFIG_HOME") || (Quickshell.env("HOME") + "/.config")
   readonly property string helperPath: configHome + "/omarchy/plugins/ayumad.g14-controls/g14ctl"
   property int refreshIntervalSec: Number(setting("refreshIntervalSec", 10))
@@ -152,7 +153,7 @@ BarWidget {
       opticalSize: Style.space(20)
       iconComponent: Component {
         Image {
-          source: root.rogLogoSource
+          source: root.rogBarLogoSource
           fillMode: Image.PreserveAspectFit
           smooth: true
           mipmap: true

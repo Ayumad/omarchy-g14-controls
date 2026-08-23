@@ -11,7 +11,7 @@ open a Quickshell panel.
 
 - Quiet, Balanced, and Performance profiles
 - Keyboard backlight off/low/medium/high
-- Visual hue-gradient keyboard color selector and Aura effect selector
+- Visual hue-gradient keyboard color selector and G-Helper-style Aura mode selector
 - Slash LED on/off, all modes exposed by the G14 firmware, and brightness
 - Integrated, Hybrid, and Ultimate graphics modes
 - Optional airplane-mode toggle through `rfkill`
