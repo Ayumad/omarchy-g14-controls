@@ -468,7 +468,7 @@ Panel {
 
               Dropdown {
                 id: auraModeDropdown
-                width: (parent.width - parent.spacing) * 0.48
+                width: (parent.width - parent.spacing) / 2
                 label: "AURA"
                 value: root.auraMode
                 options: root.auraModes
@@ -479,7 +479,7 @@ Panel {
 
               Dropdown {
                 id: slashModeDropdown
-                width: (parent.width - parent.spacing) * 0.52
+                width: (parent.width - parent.spacing) / 2
                 label: "SLASH"
                 value: root.slashMode
                 options: root.slashModes
@@ -504,30 +504,51 @@ Panel {
                 onChanged: root.applySlashBrightness(value)
               }
 
-              Button {
-                width: (parent.width - parent.spacing * 2) / 3
-                text: "ON"
-                fontSize: Style.font.caption
-                foreground: root.contentForeground
-                fontFamily: root.contentFontFamily
-                horizontalPadding: Style.spacing.controlPaddingX
-                verticalPadding: Style.spacing.controlPaddingY
-                bordered: true
-                active: root.slashEnabled === "true"
-                onClicked: root.runAction(["slash", "on"])
-              }
+              Column {
+                width: parent.width - slashBrightnessDropdown.width - parent.spacing
+                spacing: Style.spacing.labelGap
 
-              Button {
-                width: (parent.width - parent.spacing * 2) / 3
-                text: "OFF"
-                fontSize: Style.font.caption
-                foreground: root.contentForeground
-                fontFamily: root.contentFontFamily
-                horizontalPadding: Style.spacing.controlPaddingX
-                verticalPadding: Style.spacing.controlPaddingY
-                bordered: true
-                active: root.slashEnabled === "false"
-                onClicked: root.runAction(["slash", "off"])
+                Text {
+                  text: "POWER"
+                  color: Qt.darker(root.contentForeground, 1.4)
+                  font.family: root.contentFontFamily
+                  font.pixelSize: Style.font.caption
+                  font.bold: true
+                }
+
+                Row {
+                  width: parent.width
+                  height: Style.spacing.controlHeight
+                  spacing: Style.space(8)
+
+                  Button {
+                    width: (parent.width - parent.spacing) / 2
+                    height: parent.height
+                    text: "ON"
+                    fontSize: Style.font.caption
+                    foreground: root.contentForeground
+                    fontFamily: root.contentFontFamily
+                    horizontalPadding: Style.spacing.controlPaddingX
+                    verticalPadding: Style.spacing.controlPaddingY
+                    bordered: true
+                    active: root.slashEnabled === "true"
+                    onClicked: root.runAction(["slash", "on"])
+                  }
+
+                  Button {
+                    width: (parent.width - parent.spacing) / 2
+                    height: parent.height
+                    text: "OFF"
+                    fontSize: Style.font.caption
+                    foreground: root.contentForeground
+                    fontFamily: root.contentFontFamily
+                    horizontalPadding: Style.spacing.controlPaddingX
+                    verticalPadding: Style.spacing.controlPaddingY
+                    bordered: true
+                    active: root.slashEnabled === "false"
+                    onClicked: root.runAction(["slash", "off"])
+                  }
+                }
               }
             }
 
