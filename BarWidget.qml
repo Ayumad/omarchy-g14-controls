@@ -45,6 +45,14 @@ BarWidget {
     return root.adaptive ? "Adaptive profile · " + current + " now" : "Profile: " + current
   }
 
+  function adaptiveLevel() {
+    switch (root.profile.toLowerCase()) {
+      case "quiet": return 1
+      case "performance": return 3
+      default: return 2
+    }
+  }
+
   function gpuGlyph() {
     // A full-size discrete card is visually distinct from the low-power
     // integrated/sleeping state, even while Hybrid mode is selected.
@@ -227,6 +235,7 @@ BarWidget {
       iconComponent: Component {
         Item {
           Text {
+            visible: !root.adaptive
             anchors.centerIn: parent
             text: root.profileGlyph()
             color: root.bar ? root.bar.foreground : Color.foreground
@@ -234,16 +243,39 @@ BarWidget {
             font.pixelSize: Style.bar.iconFont
           }
 
-          // The small circular-arrow badge distinguishes AC/battery automation
-          // from a directly selected firmware profile without widening the bar.
-          Text {
+          // Adaptive is a distinct automatic state. Its circular base glyph
+          // does not reuse a native profile icon; the small level marks vary
+          // with the current Quiet, Balanced, or Performance target.
+          Item {
             visible: root.adaptive
-            anchors.right: parent.right
-            anchors.bottom: parent.bottom
-            text: "↻"
-            color: root.bar ? root.bar.foreground : Color.foreground
-            font.family: root.bar ? root.bar.fontFamily : Style.font.family
-            font.pixelSize: Math.max(6, Math.round(Style.bar.iconFont * 0.55))
+            anchors.fill: parent
+
+            Text {
+              anchors.centerIn: parent
+              anchors.verticalCenterOffset: -Style.space(1)
+              text: "↻"
+              color: root.bar ? root.bar.foreground : Color.foreground
+              font.family: root.bar ? root.bar.fontFamily : Style.font.family
+              font.pixelSize: Style.bar.iconFont
+            }
+
+            Row {
+              anchors.horizontalCenter: parent.horizontalCenter
+              anchors.bottom: parent.bottom
+              anchors.bottomMargin: Style.space(1)
+              spacing: Style.space(1)
+
+              Repeater {
+                model: root.adaptiveLevel()
+
+                Rectangle {
+                  width: Style.space(3)
+                  height: Style.space(2)
+                  radius: height / 2
+                  color: root.bar ? root.bar.foreground : Color.foreground
+                }
+              }
+            }
           }
         }
       }

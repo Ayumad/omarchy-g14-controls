@@ -34,6 +34,12 @@ Panel {
   property string message: ""
   property string errorMessage: ""
   property bool advancedOpen: false
+  property int cursorIndex: 0
+  property bool cursorActive: false
+
+  readonly property var profileChoices: ["Quiet", "Balanced", "Performance", "Adaptive"]
+  readonly property var keyboardLevels: ["off", "low", "med", "high"]
+  readonly property var gpuChoices: ["integrated", "hybrid", "ultimate"]
 
   readonly property var auraModes: [
     { value: "static", label: "Static" },
@@ -118,6 +124,28 @@ Panel {
     root.runAction(["aura-mode", root.auraMode, root.selectedAuraColor])
   }
 
+  function adaptiveLevel() {
+    switch (root.profile) {
+      case "Quiet": return 1
+      case "Performance": return 3
+      default: return 2
+    }
+  }
+
+  function profileOptionGlyph(profileName) {
+    return profileName === "Adaptive" ? "↻" : {
+      "Quiet": "󰌪",
+      "Balanced": "󰊚",
+      "Performance": "󰓅"
+    }[profileName] || "󰂄"
+  }
+
+  function profileOptionTooltip(profileName) {
+    return profileName === "Adaptive"
+      ? "Adaptive · now " + (root.profile || "Balanced") + " · AC Balanced / battery Quiet"
+      : profileName
+  }
+
   function applySlashMode(mode) {
     root.slashMode = String(mode)
     root.runAction(["slash-mode", root.slashMode])
@@ -126,6 +154,117 @@ Panel {
   function applySlashBrightness(value) {
     root.slashBrightness = String(value)
     root.runAction(["slash-brightness", root.slashBrightness])
+  }
+
+  function cursorCount() {
+    if (root.view === "profile") return root.profileChoices.length
+    if (root.view === "graphics") return root.gpuChoices.length
+    return root.advancedOpen ? 19 : 10
+  }
+
+  function activeProfileIndex() {
+    if (root.adaptive) return root.profileChoices.indexOf("Adaptive")
+    var profileIndex = root.profileChoices.indexOf(root.profile)
+    return profileIndex >= 0 ? profileIndex : 0
+  }
+
+  function initialCursorIndex() {
+    if (root.view === "graphics") {
+      var gpuIndex = root.gpuChoices.indexOf(root.gpuMode)
+      return gpuIndex >= 0 ? gpuIndex : 0
+    }
+    return root.activeProfileIndex()
+  }
+
+  function resetCursor() {
+    root.cursorActive = false
+    root.cursorIndex = root.initialCursorIndex()
+    Qt.callLater(root.ensureCursorVisible)
+  }
+
+  function clampCursor() {
+    root.cursorIndex = Math.max(0, Math.min(root.cursorIndex, root.cursorCount() - 1))
+  }
+
+  function adjustHue(direction) {
+    root.selectedHue = Math.max(0, Math.min(1, root.selectedHue + direction * 0.025))
+  }
+
+  function moveCursor(dx, dy) {
+    root.cursorActive = true
+    if (root.view === "all" && root.cursorIndex === 8 && dx !== 0) {
+      root.adjustHue(dx)
+      return
+    }
+    var delta = dx !== 0 ? dx : dy
+    if (delta === 0) return
+    root.cursorIndex = Math.max(0, Math.min(root.cursorCount() - 1, root.cursorIndex + delta))
+    Qt.callLater(root.ensureCursorVisible)
+  }
+
+  function activateCursor() {
+    root.cursorActive = true
+    if (root.view === "profile") {
+      root.runAction(["profile", root.profileChoices[root.cursorIndex].toLowerCase()])
+      return
+    }
+    if (root.view === "graphics") {
+      root.runAction(["graphics", root.gpuChoices[root.cursorIndex]])
+      return
+    }
+
+    if (root.cursorIndex < 4) {
+      root.runAction(["profile", root.profileChoices[root.cursorIndex].toLowerCase()])
+    } else if (root.cursorIndex < 8) {
+      root.runAction(["keyboard", root.keyboardLevels[root.cursorIndex - 4]])
+    } else if (root.cursorIndex === 8) {
+      root.applyAuraColor(root.hueToColor(root.selectedHue))
+    } else if (root.cursorIndex === 9) {
+      root.advancedOpen = !root.advancedOpen
+    } else if (root.cursorIndex === 10) {
+      auraModeDropdown.open()
+    } else if (root.cursorIndex === 11) {
+      slashModeDropdown.open()
+    } else if (root.cursorIndex === 12) {
+      slashBrightnessDropdown.open()
+    } else if (root.cursorIndex === 13) {
+      root.runAction(["slash", "on"])
+    } else if (root.cursorIndex === 14) {
+      root.runAction(["slash", "off"])
+    } else if (root.cursorIndex === 15) {
+      root.runAction(["aura-lock", root.auraLocked ? "off" : "on"])
+    } else {
+      root.runAction(["graphics", root.gpuChoices[root.cursorIndex - 16]])
+    }
+  }
+
+  function cursorItem() {
+    if (root.view === "profile") return profileButtons.itemAt(root.cursorIndex)
+    if (root.view === "graphics") return gpuButtons.itemAt(root.cursorIndex)
+    if (root.cursorIndex < 4) return profileButtons.itemAt(root.cursorIndex)
+    if (root.cursorIndex < 8) return keyboardButtons.itemAt(root.cursorIndex - 4)
+    if (root.cursorIndex === 8) return hueSlider
+    if (root.cursorIndex === 9) return advancedButton
+    if (root.cursorIndex === 10) return auraModeDropdown
+    if (root.cursorIndex === 11) return slashModeDropdown
+    if (root.cursorIndex === 12) return slashBrightnessDropdown
+    if (root.cursorIndex === 13) return slashOnButton
+    if (root.cursorIndex === 14) return slashOffButton
+    if (root.cursorIndex === 15) return colorLockButton
+    return gpuButtons.itemAt(root.cursorIndex - 16)
+  }
+
+  function ensureCursorVisible() {
+    var target = root.cursorItem()
+    var flickable = scrollArea ? scrollArea.contentItem : null
+    if (!target || !flickable || !("contentY" in flickable)) return
+    var position = target.mapToItem(panelColumn, 0, 0)
+    var top = position.y
+    var bottom = top + target.height
+    var visibleTop = flickable.contentY
+    var visibleBottom = visibleTop + scrollArea.height
+    if (top < visibleTop) flickable.contentY = Math.max(0, top - Style.space(8))
+    else if (bottom > visibleBottom) flickable.contentY = Math.max(0, bottom - scrollArea.height + Style.space(8))
   }
 
   function updateStatus(raw) {
@@ -154,6 +293,7 @@ Panel {
 
   function open() {
     refresh()
+    resetCursor()
     root.controller.show()
   }
 
@@ -170,6 +310,13 @@ Panel {
       return root.hostWidget.bar.switchPanelFrom(root.hostWidget, direction)
     return false
   }
+
+  onViewChanged: root.resetCursor()
+  onAdvancedOpenChanged: {
+    root.clampCursor()
+    Qt.callLater(root.ensureCursorVisible)
+  }
+  onCursorIndexChanged: Qt.callLater(root.ensureCursorVisible)
 
   Process {
     id: statusProc
@@ -215,8 +362,8 @@ Panel {
       anchors.fill: parent
       blocked: auraModeDropdown.popupOpen
         || slashModeDropdown.popupOpen || slashBrightnessDropdown.popupOpen
-      onMoveRequested: function(dx, dy) {}
-      onActivateRequested: function() {}
+      onMoveRequested: function(dx, dy) { root.moveCursor(dx, dy) }
+      onActivateRequested: root.activateCursor()
       onCloseRequested: root.close()
       onTabRequested: function(direction) { root.switchPanel(direction) }
 
@@ -327,23 +474,50 @@ Panel {
               width: parent.width
               spacing: Style.space(6)
 
-              readonly property int columns: root.view === "profile" ? 2 : 4
+              readonly property int columns: 4
 
               Repeater {
-                model: ["Quiet", "Balanced", "Performance", "Adaptive"]
+                id: profileButtons
+                model: root.profileChoices
 
                 Button {
                   required property string modelData
                   width: (profileFlow.width - profileFlow.spacing * (profileFlow.columns - 1)) / profileFlow.columns
-                  text: modelData
+                  text: root.view === "profile" ? "" : modelData
+                  iconText: root.view === "profile" ? root.profileOptionGlyph(modelData) : ""
                   fontSize: Style.font.bodySmall
+                  iconSize: Style.font.icon
+                  tooltipText: root.view === "profile" ? root.profileOptionTooltip(modelData) : ""
                   foreground: root.contentForeground
                   fontFamily: root.contentFontFamily
                   horizontalPadding: Style.spacing.controlPaddingX
                   verticalPadding: Style.spacing.controlPaddingY
                   bordered: true
                   active: modelData === "Adaptive" ? root.adaptive : !root.adaptive && root.profile === modelData
+                  hasCursor: root.cursorActive && root.cursorIndex === root.profileChoices.indexOf(modelData)
                   onClicked: root.runAction(["profile", modelData.toLowerCase()])
+
+                  // Adaptive is a policy rather than another native ASUS
+                  // profile. Its own automatic icon gets one, two, or three
+                  // compact level marks for Quiet, Balanced, or Performance.
+                  Row {
+                    visible: root.view === "profile" && modelData === "Adaptive"
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    anchors.bottom: parent.bottom
+                    anchors.bottomMargin: Style.space(4)
+                    spacing: Style.space(1)
+
+                    Repeater {
+                      model: root.adaptiveLevel()
+
+                      Rectangle {
+                        width: Style.space(3)
+                        height: Style.space(2)
+                        radius: height / 2
+                        color: root.contentForeground
+                      }
+                    }
+                  }
                 }
               }
             }
@@ -371,7 +545,8 @@ Panel {
               spacing: Style.space(6)
 
               Repeater {
-                model: ["off", "low", "med", "high"]
+                id: keyboardButtons
+                model: root.keyboardLevels
 
                 Button {
                   required property string modelData
@@ -384,6 +559,8 @@ Panel {
                   verticalPadding: Style.spacing.controlPaddingY
                   bordered: true
                   active: root.keyboard.toLowerCase() === modelData
+                  hasCursor: root.cursorActive && root.view === "all"
+                    && root.cursorIndex === root.keyboardLevels.indexOf(modelData) + 4
                   onClicked: root.runAction(["keyboard", modelData])
                 }
               }
@@ -438,6 +615,9 @@ Panel {
                   width: hueSlider.availableWidth
                   height: Style.space(10)
                   radius: height / 2
+                  border.width: root.cursorActive && root.view === "all" && root.cursorIndex === 8
+                    ? Style.normalBorderWidth : 0
+                  border.color: root.contentForeground
                   gradient: Gradient {
                     orientation: Gradient.Horizontal
                     GradientStop { position: 0.00; color: "#ff2244" }
@@ -463,20 +643,10 @@ Panel {
               }
             }
 
-            Toggle {
-              width: parent.width
-              label: "LOCK COLOR ACROSS THEMES"
-              description: root.auraLocked
-                ? "Reapplies this keyboard lighting after every theme change"
-                : "Off — enable to preserve this lighting through theme changes"
-              checked: root.auraLocked
-              foreground: root.contentForeground
-              fontFamily: root.contentFontFamily
-              onClicked: root.runAction(["aura-lock", root.auraLocked ? "off" : "on"])
-            }
           }
 
           Button {
+            id: advancedButton
             visible: root.view === "all"
             width: parent.width
             text: root.advancedOpen ? "HIDE ADVANCED CONTROLS" : "SHOW ADVANCED CONTROLS"
@@ -487,6 +657,7 @@ Panel {
             verticalPadding: Style.spacing.controlPaddingY
             bordered: true
             active: root.advancedOpen
+            hasCursor: root.cursorActive && root.cursorIndex === 9
             onClicked: root.advancedOpen = !root.advancedOpen
           }
 
@@ -516,6 +687,7 @@ Panel {
                 options: root.auraModes
                 foreground: root.contentForeground
                 fontFamily: root.contentFontFamily
+                hasCursor: root.cursorActive && root.cursorIndex === 10
                 onChanged: root.applyAuraMode(value)
               }
 
@@ -527,6 +699,7 @@ Panel {
                 options: root.slashModes
                 foreground: root.contentForeground
                 fontFamily: root.contentFontFamily
+                hasCursor: root.cursorActive && root.cursorIndex === 11
                 onChanged: root.applySlashMode(value)
               }
             }
@@ -543,6 +716,7 @@ Panel {
                 options: root.slashBrightnessLevels
                 foreground: root.contentForeground
                 fontFamily: root.contentFontFamily
+                hasCursor: root.cursorActive && root.cursorIndex === 12
                 onChanged: root.applySlashBrightness(value)
               }
 
@@ -565,6 +739,7 @@ Panel {
                   spacing: Style.space(8)
 
                   Button {
+                    id: slashOnButton
                     width: (parent.width - parent.spacing) / 2
                     height: parent.height
                     text: "ON"
@@ -575,10 +750,12 @@ Panel {
                     verticalPadding: Style.spacing.controlPaddingY
                     bordered: true
                     active: root.slashEnabled === "true"
+                    hasCursor: root.cursorActive && root.cursorIndex === 13
                     onClicked: root.runAction(["slash", "on"])
                   }
 
                   Button {
+                    id: slashOffButton
                     width: (parent.width - parent.spacing) / 2
                     height: parent.height
                     text: "OFF"
@@ -589,9 +766,31 @@ Panel {
                     verticalPadding: Style.spacing.controlPaddingY
                     bordered: true
                     active: root.slashEnabled === "false"
+                    hasCursor: root.cursorActive && root.cursorIndex === 14
                     onClicked: root.runAction(["slash", "off"])
                   }
                 }
+              }
+            }
+
+            Row {
+              width: parent.width
+
+              Button {
+                id: colorLockButton
+                text: root.auraLocked ? "COLOR LOCKED" : "LOCK COLOR"
+                tooltipText: root.auraLocked
+                  ? "Keyboard color lock is on — click to turn it off"
+                  : "Keep the current keyboard lighting across theme changes"
+                fontSize: Style.font.caption
+                foreground: root.contentForeground
+                fontFamily: root.contentFontFamily
+                horizontalPadding: Style.space(8)
+                verticalPadding: Style.space(5)
+                bordered: true
+                active: root.auraLocked
+                hasCursor: root.cursorActive && root.cursorIndex === 15
+                onClicked: root.runAction(["aura-lock", root.auraLocked ? "off" : "on"])
               }
             }
 
@@ -619,7 +818,8 @@ Panel {
               spacing: Style.space(6)
 
               Repeater {
-                model: ["integrated", "hybrid", "ultimate"]
+                id: gpuButtons
+                model: root.gpuChoices
 
                 Button {
                   required property string modelData
@@ -632,6 +832,9 @@ Panel {
                   verticalPadding: Style.spacing.controlPaddingY
                   bordered: true
                   active: root.gpuMode === modelData
+                  hasCursor: root.cursorActive && (root.view === "graphics"
+                    ? root.cursorIndex === root.gpuChoices.indexOf(modelData)
+                    : root.cursorIndex === root.gpuChoices.indexOf(modelData) + 16)
                   onClicked: root.runAction(["graphics", modelData])
                 }
               }

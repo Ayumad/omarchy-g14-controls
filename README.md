@@ -17,12 +17,14 @@ color range rather than a UI theme color.
   sleeping Hybrid states.
 - **Focused glyph panels** — select the profile or GPU glyph to open only its
   power or graphics controls, anchored directly below that glyph. The ROG mark
-  always opens the complete panel.
+  always opens the complete panel. Compact profile controls use glyphs with
+  precise hover labels; the complete panel spells every choice out.
 - **Power profiles** — Quiet, Balanced, and Performance controls. Adaptive
   configures ASUS defaults of Balanced on AC power and Quiet on battery; its
-  bar glyph carries a small automatic badge while retaining the active profile
-  symbol. Profile changes update the bar immediately and replace, rather than
-  stack, their desktop notification.
+  dedicated automatic glyph carries one, two, or three small level marks for
+  the current Quiet, Balanced, or Performance target. Profile changes update
+  the bar immediately and replace, rather than stack, their desktop
+  notification.
 - **Keyboard backlight and Aura** — Off/Low/Medium/High brightness controls,
   a horizontal hue-spectrum selector, and the modes actually exposed by the
   laptop firmware: Static, Breathing, Color Cycle, Rainbow, and Pulse.
@@ -34,6 +36,11 @@ color range rather than a UI theme color.
 - **Hardware-key ready** — the README includes the ROG-key binding; the panel
   also supports left-click to open, right-click to cycle profiles, and
   middle-click to refresh.
+- **Complete keyboard navigation** — Arrow keys or `H`/`J`/`K`/`L` move through
+  every control, `Enter`/`Space` activates it, and `Esc` closes the panel. On
+  the color strip, Left/Right adjusts the hue before `Enter` applies it;
+  dropdowns use Up/Down or `J`/`K` and `Enter` to select. `Tab`/`Shift+Tab`
+  retains Omarchy's panel-switching behavior.
 - **Theme-native UI** — the bar, ROG mark, panel, typography, and controls
   inherit the active Omarchy theme and font automatically. The keyboard hue
   strip stays multicolored because it is a lighting tool, not a theme accent.
@@ -41,6 +48,7 @@ color range rather than a UI theme color.
   lighting across Omarchy theme changes. The lock creates one user-owned
   `theme-set` hook only while enabled; changing color or effect while locked
   updates the saved lighting, and disabling it removes that hook and state.
+  Its compact toggle lives in Advanced controls.
 - **Optional airplane mode** through `rfkill`.
 
 The default panel is deliberately compact: profile, keyboard backlight, and a
