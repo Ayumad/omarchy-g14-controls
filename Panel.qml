@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Effects
 import Quickshell
 import Quickshell.Io
 import qs.Commons
@@ -240,8 +241,18 @@ Panel {
               fillMode: Image.PreserveAspectFit
               smooth: true
               mipmap: true
+              visible: false
+              layer.enabled: true
               anchors.left: parent.left
               anchors.verticalCenter: parent.verticalCenter
+            }
+
+            MultiEffect {
+              anchors.fill: heroIcon
+              source: heroIcon
+              autoPaddingEnabled: false
+              colorization: 1.0
+              colorizationColor: root.contentForeground
             }
 
             Column {
@@ -262,7 +273,8 @@ Panel {
 
               Text {
                 text: (root.profile || "Unknown") + " · " + (root.gpuMode || "Unknown")
-                color: Qt.darker(root.contentForeground, 1.35)
+                color: root.contentForeground
+                opacity: 0.65
                 font.family: root.contentFontFamily
                 font.pixelSize: Style.font.caption
                 font.bold: true
@@ -512,7 +524,8 @@ Panel {
 
                 Text {
                   text: "POWER"
-                  color: Qt.darker(root.contentForeground, 1.4)
+                  color: root.contentForeground
+                  opacity: 0.65
                   font.family: root.contentFontFamily
                   font.pixelSize: Style.font.caption
                   font.bold: true

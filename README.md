@@ -7,6 +7,10 @@ The compact bar presentation separates the G14, profile, and GPU glyphs, each
 with a focused tooltip. Click any glyph (or press the configured ROG key) to
 open a Quickshell panel.
 
+The bar and panel inherit Omarchy's active theme and font automatically. The
+keyboard hue strip remains multicolored because it previews the actual Aura
+color range rather than a UI theme color.
+
 ## Features
 
 - Quiet, Balanced, and Performance profiles
