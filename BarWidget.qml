@@ -7,7 +7,6 @@ import qs.Ui
 BarWidget {
   id: root
   moduleName: "ayumad.g14-controls"
-  property string label: "G14"
   property string profile: ""
   property string gpuMode: ""
   property string runtime: ""
@@ -17,11 +16,30 @@ BarWidget {
   property int refreshIntervalSec: Number(setting("refreshIntervalSec", 10))
   readonly property bool opened: panelLoader.item ? panelLoader.item.opened === true : false
 
-  // WidgetButton is anchored rather than a layout child, so the host needs
-  // an explicit slot size. Follow the rendered label so long profiles (for
-  // example Performance) cannot paint into the neighboring status icons.
-  implicitWidth: root.vertical ? root.barSize : Math.max(Style.space(100), button.implicitWidth)
+  // Keep the bar compact: the G14 badge, performance profile, and graphics
+  // mode are glyphs; the tooltip and panel retain the full readable state.
+  implicitWidth: root.vertical ? root.barSize : button.implicitWidth
   implicitHeight: root.barSize
+
+  function profileGlyph() {
+    switch (root.profile.toLowerCase()) {
+      case "quiet": return "󰌪"
+      case "balanced": return "󰊚"
+      case "performance": return "󰓅"
+      default: return "󰂄"
+    }
+  }
+
+  function gpuGlyph() {
+    switch (root.gpuMode.toLowerCase()) {
+      case "integrated": return "󰍛"
+      case "hybrid": return "󰢮"
+      case "ultimate": return "󰓅"
+      default: return "󰈹"
+    }
+  }
+
+  readonly property string statusGlyphs: "󰣇  " + root.profileGlyph() + "  " + root.gpuGlyph()
 
   function open() { if (panelLoader.item) panelLoader.item.open() }
   function close() { if (panelLoader.item) panelLoader.item.close() }
@@ -62,10 +80,7 @@ BarWidget {
           root.gpuMode = value.gpu_mode || ""
           root.runtime = value.nvidia_runtime || ""
           root.keyboard = value.keyboard_brightness || ""
-    root.label = "G14 " + (root.profile || "") + " · " + (root.gpuMode || "")
-        } catch (error) {
-          root.label = "G14"
-        }
+        } catch (error) {}
       }
     }
   }
@@ -112,12 +127,14 @@ BarWidget {
     id: button
     anchors.fill: parent
     bar: root.bar
-    text: root.vertical ? (root.profile || "G14") : root.label
+    text: root.vertical ? root.profileGlyph() : root.statusGlyphs
     labelVisible: true
-    horizontalMargin: 8
+    fontSize: Style.bar.iconFont
+    horizontalMargin: 3
     verticalPadding: 6
-    tooltipText: "G14 " + (root.profile || "unknown") + " · " + (root.gpuMode || "unknown")
+    tooltipText: "G14 · Profile " + (root.profile || "unknown") + " · GPU " + (root.gpuMode || "unknown")
       + " · NVIDIA " + (root.runtime || "unknown") + " · Keyboard " + (root.keyboard || "unknown")
+      + "\nLeft: controls · Right: next profile · Middle: refresh"
     onPressed: function(mouseButton) {
       if (mouseButton === Qt.LeftButton) {
         if (panelLoader.item) panelLoader.item.toggle()

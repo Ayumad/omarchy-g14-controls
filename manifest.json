@@ -2,10 +2,10 @@
   "schemaVersion": 1,
   "id": "ayumad.g14-controls",
   "name": "G14 Controls",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "author": "ayumad",
   "license": "MIT",
-  "description": "Native Omarchy G14 controls with a compact daily view and expandable advanced Aura, Slash, and graphics settings.",
+  "description": "Native Omarchy G14 controls with compact status glyphs plus expandable advanced Aura, Slash, and graphics settings.",
   "kinds": ["bar-widget"],
   "entryPoints": {"barWidget": "BarWidget.qml"},
   "barWidget": {

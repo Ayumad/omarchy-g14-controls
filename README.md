@@ -3,7 +3,9 @@
 Native Omarchy bar controls for ASUS ROG Zephyrus G14 laptops using the
 supported `asusctl`/`asusd` stack. The bar widget shows the active power
 profile, graphics mode, NVIDIA runtime state, and keyboard backlight level.
-Click it (or press the configured ROG key) to open a Quickshell panel.
+The compact bar presentation uses G14, profile, and GPU glyphs; its tooltip
+retains the complete readable state. Click it (or press the configured ROG
+key) to open a Quickshell panel.
 
 ## Features
 
