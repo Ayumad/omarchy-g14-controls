@@ -14,7 +14,35 @@ notify() {
 
 # Profile cycling can be triggered quickly from the hardware key.  Keep one
 # notification per login session and replace its contents on every change.
-profile_notification_file="${XDG_RUNTIME_DIR:-/tmp}/g14ctl-profile-notification-${UID}"
+# Never use a shared directory such as /tmp for this state: the path is written
+# after a notification change and must not be vulnerable to symlink redirection.
+profile_notification_state_dir="${XDG_RUNTIME_DIR:-${XDG_STATE_HOME:-${HOME}/.local/state}}/ayumad.g14-controls"
+profile_notification_file="$profile_notification_state_dir/g14ctl-profile-notification-${UID}"
+
+write_profile_notification_id() {
+  local temporary
+
+  [[ -d "$profile_notification_state_dir" ]] \
+    || mkdir -p -- "$profile_notification_state_dir" \
+    || return 1
+  [[ ! -L "$profile_notification_state_dir" && -O "$profile_notification_state_dir" ]] \
+    || return 1
+  chmod 700 -- "$profile_notification_state_dir" || return 1
+
+  # Create a uniquely named file, then rename it into place.  The directory
+  # is private to this user, and rename replaces (rather than follows) a
+  # pre-existing symlink at the destination.
+  temporary=$(mktemp -- "$profile_notification_state_dir/.g14ctl-profile-notification.XXXXXX") \
+    || return 1
+  if ! (umask 077; printf '%s\n' "$1" > "$temporary"); then
+    rm -f -- "$temporary"
+    return 1
+  fi
+  if ! mv -f -- "$temporary" "$profile_notification_file"; then
+    rm -f -- "$temporary"
+    return 1
+  fi
+}
 
 notify_profile() {
   local replace_id="" notification_id=""
@@ -35,7 +63,7 @@ notify_profile() {
   fi
 
   if [[ "$notification_id" =~ ^[1-9][0-9]*$ ]]; then
-    (umask 077; printf '%s\n' "$notification_id" > "$profile_notification_file") 2>/dev/null || true
+    write_profile_notification_id "$notification_id" 2>/dev/null || true
   else
     notify "$@"
   fi
