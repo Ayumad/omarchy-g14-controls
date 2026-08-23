@@ -159,7 +159,7 @@ Panel {
   function cursorCount() {
     if (root.view === "profile") return root.profileChoices.length
     if (root.view === "graphics") return root.gpuChoices.length
-    return root.advancedOpen ? 19 : 10
+    return root.advancedOpen ? 21 : 10
   }
 
   function activeProfileIndex() {
@@ -233,8 +233,12 @@ Panel {
       root.runAction(["slash", "off"])
     } else if (root.cursorIndex === 15) {
       root.runAction(["aura-lock", root.auraLocked ? "off" : "on"])
+    } else if (root.cursorIndex === 16) {
+      root.launchHotkeyCapture()
+    } else if (root.cursorIndex === 17) {
+      root.launchHotkeySetup()
     } else {
-      root.runAction(["graphics", root.gpuChoices[root.cursorIndex - 16]])
+      root.runAction(["graphics", root.gpuChoices[root.cursorIndex - 18]])
     }
   }
 
@@ -251,7 +255,25 @@ Panel {
     if (root.cursorIndex === 13) return slashOnButton
     if (root.cursorIndex === 14) return slashOffButton
     if (root.cursorIndex === 15) return colorLockButton
-    return gpuButtons.itemAt(root.cursorIndex - 16)
+    if (root.cursorIndex === 16) return captureHotkeysButton
+    if (root.cursorIndex === 17) return setupHotkeysButton
+    return gpuButtons.itemAt(root.cursorIndex - 18)
+  }
+
+  function launchHotkeyCapture() {
+    if (hotkeyProc.running) return
+    root.message = "Key capture opened in a terminal"
+    root.errorMessage = ""
+    hotkeyProc.command = ["omarchy", "launch", "terminal", root.helperPath, "hotkeys", "capture"]
+    hotkeyProc.running = true
+  }
+
+  function launchHotkeySetup() {
+    if (hotkeyProc.running) return
+    root.message = "Hotkey setup opened in a terminal"
+    root.errorMessage = ""
+    hotkeyProc.command = ["omarchy", "launch", "terminal", root.helperPath, "hotkeys", "setup"]
+    hotkeyProc.running = true
   }
 
   function ensureCursorVisible() {
@@ -343,6 +365,18 @@ Panel {
         root.errorMessage = String(actionStderr.text || "Action failed").trim()
       }
       root.refresh()
+    }
+  }
+
+  Process {
+    id: hotkeyProc
+    stderr: StdioCollector {
+      id: hotkeyStderr
+      waitForEnd: true
+    }
+    onExited: function(exitCode, exitStatus) {
+      if (exitCode !== 0)
+        root.errorMessage = String(hotkeyStderr.text || "Could not open hotkey setup").trim()
     }
   }
 
@@ -775,6 +809,7 @@ Panel {
 
             Row {
               width: parent.width
+              spacing: Style.space(6)
 
               Button {
                 id: colorLockButton
@@ -791,6 +826,34 @@ Panel {
                 active: root.auraLocked
                 hasCursor: root.cursorActive && root.cursorIndex === 15
                 onClicked: root.runAction(["aura-lock", root.auraLocked ? "off" : "on"])
+              }
+
+              Button {
+                id: captureHotkeysButton
+                text: "CAPTURE KEYS"
+                tooltipText: "Open wev to identify your physical G14 key symbols"
+                fontSize: Style.font.caption
+                foreground: root.contentForeground
+                fontFamily: root.contentFontFamily
+                horizontalPadding: Style.space(8)
+                verticalPadding: Style.space(5)
+                bordered: true
+                hasCursor: root.cursorActive && root.cursorIndex === 16
+                onClicked: root.launchHotkeyCapture()
+              }
+
+              Button {
+                id: setupHotkeysButton
+                text: "SET UP HOTKEYS"
+                tooltipText: "Guided, opt-in G14 hotkey setup with a backup and confirmation"
+                fontSize: Style.font.caption
+                foreground: root.contentForeground
+                fontFamily: root.contentFontFamily
+                horizontalPadding: Style.space(8)
+                verticalPadding: Style.space(5)
+                bordered: true
+                hasCursor: root.cursorActive && root.cursorIndex === 17
+                onClicked: root.launchHotkeySetup()
               }
             }
 
@@ -834,7 +897,7 @@ Panel {
                   active: root.gpuMode === modelData
                   hasCursor: root.cursorActive && (root.view === "graphics"
                     ? root.cursorIndex === root.gpuChoices.indexOf(modelData)
-                    : root.cursorIndex === root.gpuChoices.indexOf(modelData) + 16)
+                    : root.cursorIndex === root.gpuChoices.indexOf(modelData) + 18)
                   onClicked: root.runAction(["graphics", modelData])
                 }
               }

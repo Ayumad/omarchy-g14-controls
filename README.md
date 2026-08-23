@@ -36,6 +36,10 @@ color range rather than a UI theme color.
 - **Hardware-key ready** — the README includes the ROG-key binding; the panel
   also supports left-click to open, right-click to cycle profiles, and
   middle-click to refresh.
+- **Guided G14 hotkeys** — Advanced controls can launch `wev` to capture the
+  laptop's actual key symbols, then open a confirmation-first setup wizard.
+  It offers common G14 defaults, lets users customize or skip each mapping,
+  backs up `bindings.lua`, and replaces only its own marked binding block.
 - **Complete keyboard navigation** — Arrow keys or `H`/`J`/`K`/`L` move through
   every control, `Enter`/`Space` activates it, and `Esc` closes the panel. On
   the color strip, Left/Right adjusts the hue before `Enter` applies it;
@@ -53,7 +57,8 @@ color range rather than a UI theme color.
 
 The default panel is deliberately compact: profile, keyboard backlight, and a
 visual keyboard-color slider are always visible. **Advanced controls** opens
-one short section for Aura effects, Slash controls, and graphics mode.
+one short section for Aura effects, Slash controls, optional G14 hotkeys, and
+graphics mode.
 
 Graphics mode changes are deliberately manual and require a reboot. The
 plugin never switches graphics mode automatically, changes fan curves/TGP/CPU
@@ -67,6 +72,7 @@ emulated.
 - `asusd` running with `asusctl` and `rog-control-center` installed
 - `jq` for status serialization and `pciutils` (`lspci`) for dGPU model detection
 - ASUS WMI support for the controls exposed by the specific laptop
+- `wev` (optional, only for the G14 key-capture action)
 
 The bundled `g14ctl` helper runs with the logged-in user's permissions and
 does not request administrative access. The plugin and helper are unsandboxed,
@@ -94,8 +100,33 @@ o.bind("XF86Launch1", "G14 controls", "omarchy-shell shell toggle ayumad.g14-con
 ```
 
 The widget's right-click cycles profiles and middle-click refreshes its state.
-The included panel does not create or overwrite Hyprland keybindings; add only
-the bindings you want.
+The simple manual binding above does not modify other settings. The optional
+guided setup below is the only plugin path that writes Hyprland bindings, and
+it asks for final confirmation first.
+
+## Optional guided G14 hotkey setup
+
+In **Advanced controls**, choose **Capture Keys** to open `wev`, press each
+physical special key, and note its symbol. Then choose **Set Up Hotkeys**. The
+terminal wizard proposes the common G14 layout, but lets you enter the symbols
+you captured or use `-` to skip a mapping:
+
+| Control | Default mapping | Action |
+| --- | --- | --- |
+| M4 / ROG | `XF86Launch1` | Open G14 Controls |
+| Aura | `XF86Launch3` | Next keyboard effect |
+| Profile | `XF86Launch4`, `XF86Fn_F5` | Next power profile |
+| F6 screenshot | `SUPER + SHIFT + S` | Omarchy screenshot |
+
+Nothing changes until the wizard shows its summary and receives a final `y`.
+On confirmation it writes only the block marked
+`ayumad.g14-controls hotkeys`, creates a timestamped backup of
+`~/.config/hypr/bindings.lua`, installs the small user-local `g14ctl` wrapper
+when it is safe to do so, then reloads and validates Hyprland. The screenshot
+mapping deliberately overrides that shortcut; skip it if you already use it
+for something else. Re-run the wizard to replace only its managed block. Before
+removing the plugin, run `g14ctl hotkeys remove` to remove that block and its
+user-local wrapper while retaining a timestamped backup.
 
 If keyboard color lock is enabled, turn it off in the panel before removing
 the plugin to remove its user-owned theme hook.
@@ -106,7 +137,8 @@ the plugin to remove its user-owned theme hook.
 omarchy plugin remove ayumad.g14-controls
 ```
 
-If you created a custom Hyprland keybinding, remove that binding separately.
+If you created a custom manual Hyprland keybinding, remove that binding
+separately. For the guided setup, run `g14ctl hotkeys remove` first.
 
 ## License
 

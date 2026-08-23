@@ -2,10 +2,10 @@
   "schemaVersion": 1,
   "id": "ayumad.g14-controls",
   "name": "G14 Controls",
-  "version": "1.7.3",
+  "version": "1.7.4",
   "author": "ayumad",
   "license": "MIT",
-  "description": "Adaptive ASUS G14 controls for Omarchy: focused profile/GPU panels, live dGPU status, Aura color lock, Slash, and GPU/MUX modes.",
+  "description": "Adaptive ASUS G14 controls for Omarchy: live dGPU status, Aura and Slash lighting, GPU/MUX modes, plus optional guided G14 hotkey setup.",
   "kinds": ["bar-widget"],
   "entryPoints": {"barWidget": "BarWidget.qml"},
   "barWidget": {
