@@ -16,9 +16,8 @@ BarWidget {
   property int refreshIntervalSec: Number(setting("refreshIntervalSec", 10))
   readonly property bool opened: panelLoader.item ? panelLoader.item.opened === true : false
 
-  // Keep the bar compact: the G14 badge, performance profile, and graphics
-  // mode are glyphs; the tooltip and panel retain the full readable state.
-  implicitWidth: root.vertical ? root.barSize : button.implicitWidth
+  // Each state gets its own compact, directly hoverable glyph.
+  implicitWidth: root.vertical ? root.barSize : glyphRow.implicitWidth
   implicitHeight: root.barSize
 
   function profileGlyph() {
@@ -39,8 +38,6 @@ BarWidget {
     }
   }
 
-  readonly property string statusGlyphs: "󰣇  " + root.profileGlyph() + "  " + root.gpuGlyph()
-
   function open() { if (panelLoader.item) panelLoader.item.open() }
   function close() { if (panelLoader.item) panelLoader.item.close() }
   function toggle() { if (panelLoader.item) panelLoader.item.toggle() }
@@ -54,6 +51,23 @@ BarWidget {
     runAction(["profile", "next"])
   }
 
+  function handleGlyphPress(mouseButton) {
+    if (mouseButton === Qt.LeftButton) {
+      root.toggle()
+    } else if (mouseButton === Qt.RightButton) {
+      root.cycleProfile()
+    } else if (mouseButton === Qt.MiddleButton) {
+      root.refresh()
+    }
+  }
+
+  function graphicsTooltip() {
+    var mode = root.gpuMode || "unknown"
+    if (root.runtime === "suspended") return "GPU: " + mode + " · dGPU asleep"
+    if (root.runtime) return "GPU: " + mode + " · NVIDIA " + root.runtime
+    return "GPU: " + mode
+  }
+
   function runAction(args) {
     if (actionProc.running) return
     actionProc.command = [root.helperPath].concat(args)
@@ -65,7 +79,7 @@ BarWidget {
     if (!target) return
     if ("bar" in target) target.bar = root.bar
     if ("settings" in target) target.settings = root.settings
-    if ("anchorItem" in target) target.anchorItem = button
+    if ("anchorItem" in target) target.anchorItem = deviceButton
     if ("hostWidget" in target) target.hostWidget = root
   }
 
@@ -123,26 +137,31 @@ BarWidget {
     function toggle(): void { root.toggle() }
   }
 
-  WidgetButton {
-    id: button
-    anchors.fill: parent
-    bar: root.bar
-    text: root.vertical ? root.profileGlyph() : root.statusGlyphs
-    labelVisible: true
-    fontSize: Style.bar.iconFont
-    horizontalMargin: 3
-    verticalPadding: 6
-    tooltipText: "G14 · Profile " + (root.profile || "unknown") + " · GPU " + (root.gpuMode || "unknown")
-      + " · NVIDIA " + (root.runtime || "unknown") + " · Keyboard " + (root.keyboard || "unknown")
-      + "\nLeft: controls · Right: next profile · Middle: refresh"
-    onPressed: function(mouseButton) {
-      if (mouseButton === Qt.LeftButton) {
-        if (panelLoader.item) panelLoader.item.toggle()
-      } else if (mouseButton === Qt.RightButton) {
-        root.cycleProfile()
-      } else if (mouseButton === Qt.MiddleButton) {
-        root.refresh()
-      }
+  Row {
+    id: glyphRow
+    anchors.centerIn: parent
+    spacing: Style.space(1)
+
+    BarIconButton {
+      id: deviceButton
+      bar: root.bar
+      text: "󰣇"
+      tooltipText: "G14 controls"
+      onPressed: function(mouseButton) { root.handleGlyphPress(mouseButton) }
+    }
+
+    BarIconButton {
+      bar: root.bar
+      text: root.profileGlyph()
+      tooltipText: "Profile: " + (root.profile || "unknown")
+      onPressed: function(mouseButton) { root.handleGlyphPress(mouseButton) }
+    }
+
+    BarIconButton {
+      bar: root.bar
+      text: root.gpuGlyph()
+      tooltipText: root.graphicsTooltip()
+      onPressed: function(mouseButton) { root.handleGlyphPress(mouseButton) }
     }
   }
 

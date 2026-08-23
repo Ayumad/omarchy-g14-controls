@@ -19,6 +19,7 @@ Panel {
   property string keyboard: ""
   property string auraMode: "static"
   property string selectedAuraColor: "ff2244"
+  property real selectedHue: 0.0
   property string slashMode: "Bounce"
   property string slashBrightness: "255"
   property string slashEnabled: "unknown"
@@ -28,16 +29,6 @@ Panel {
   property string errorMessage: ""
   property bool advancedOpen: false
 
-  readonly property var auraColors: [
-    { value: "ff2244", label: "Red" },
-    { value: "ff9900", label: "Amber" },
-    { value: "ffee33", label: "Yellow" },
-    { value: "33dd66", label: "Green" },
-    { value: "22ccff", label: "Cyan" },
-    { value: "2299ff", label: "Blue" },
-    { value: "aa66ff", label: "Purple" },
-    { value: "ffffff", label: "White" }
-  ]
   readonly property var auraModes: [
     { value: "static", label: "Static" },
     { value: "breathe", label: "Breathe" },
@@ -78,6 +69,33 @@ Panel {
     return /^[0-9a-fA-F]{6}$/.test(value) ? value.toLowerCase() : ""
   }
 
+  function colorToHue(raw) {
+    var color = normalizedColor(raw)
+    if (!color) return 0.0
+    var red = parseInt(color.slice(0, 2), 16) / 255
+    var green = parseInt(color.slice(2, 4), 16) / 255
+    var blue = parseInt(color.slice(4, 6), 16) / 255
+    var maximum = Math.max(red, green, blue)
+    var minimum = Math.min(red, green, blue)
+    var delta = maximum - minimum
+    if (delta === 0) return 0.0
+    var hue
+    if (maximum === red) hue = ((green - blue) / delta + (green < blue ? 6 : 0)) / 6
+    else if (maximum === green) hue = ((blue - red) / delta + 2) / 6
+    else hue = ((red - green) / delta + 4) / 6
+    return hue
+  }
+
+  function colorComponentHex(component) {
+    var hex = Math.round(Math.max(0, Math.min(1, component)) * 255).toString(16)
+    return hex.length === 1 ? "0" + hex : hex
+  }
+
+  function hueToColor(hue) {
+    var color = Qt.hsla(Math.max(0, Math.min(1, hue)), 1, 0.5, 1)
+    return colorComponentHex(color.r) + colorComponentHex(color.g) + colorComponentHex(color.b)
+  }
+
   function applyAuraColor(raw) {
     var color = normalizedColor(raw)
     if (!color) {
@@ -85,7 +103,7 @@ Panel {
       return
     }
     root.selectedAuraColor = color
-    auraHexField.text = "#" + color
+    root.selectedHue = root.colorToHue(color)
     root.runAction(["aura-static", color])
   }
 
@@ -115,7 +133,7 @@ Panel {
       var firmwareColor = root.normalizedColor(value.aura_color)
       if (firmwareColor) {
         root.selectedAuraColor = firmwareColor
-        auraHexField.text = "#" + firmwareColor
+        root.selectedHue = root.colorToHue(firmwareColor)
       }
       root.slashMode = value.slash_mode || root.slashMode
       root.slashBrightness = value.slash_brightness || root.slashBrightness
@@ -188,7 +206,6 @@ Panel {
       anchors.fill: parent
       blocked: auraModeDropdown.popupOpen
         || slashModeDropdown.popupOpen || slashBrightnessDropdown.popupOpen
-        || auraHexField.activeFocus
       onMoveRequested: function(dx, dy) {}
       onActivateRequested: function() {}
       onCloseRequested: root.close()
@@ -352,60 +369,58 @@ Panel {
               fontFamily: root.contentFontFamily
             }
 
-            Flow {
-              id: auraColorFlow
+            Row {
               width: parent.width
-              spacing: Style.space(8)
+              spacing: Style.space(10)
 
-              Repeater {
-                model: root.auraColors
+              Rectangle {
+                width: Style.space(28)
+                height: width
+                radius: width / 2
+                anchors.verticalCenter: parent.verticalCenter
+                color: "#" + root.hueToColor(root.selectedHue)
+                border.width: Style.normalBorderWidth
+                border.color: Qt.rgba(root.contentForeground.r, root.contentForeground.g, root.contentForeground.b, 0.55)
+              }
 
-                Item {
-                  required property var modelData
-                  readonly property bool selected: root.selectedAuraColor === modelData.value
-                  width: Style.space(36)
-                  height: Style.space(44)
+              Slider {
+                id: hueSlider
+                width: parent.width - Style.space(28) - parent.spacing
+                height: Style.space(28)
+                from: 0.0
+                to: 1.0
+                value: root.selectedHue
+                onMoved: root.selectedHue = value
+                onPressedChanged: {
+                  if (!pressed) root.applyAuraColor(root.hueToColor(value))
+                }
 
-                  Rectangle {
-                    id: swatch
-                    width: Style.space(24)
-                    height: width
-                    radius: Style.cornerRadius
-                    anchors.top: parent.top
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    color: "#" + modelData.value
-                    border.width: parent.selected ? Style.space(2) : Style.normalBorderWidth
-                    border.color: parent.selected
-                      ? root.contentForeground
-                      : Qt.rgba(root.contentForeground.r, root.contentForeground.g, root.contentForeground.b, 0.35)
+                background: Rectangle {
+                  x: hueSlider.leftPadding
+                  y: hueSlider.topPadding + hueSlider.availableHeight / 2 - Style.space(5)
+                  width: hueSlider.availableWidth
+                  height: Style.space(10)
+                  radius: height / 2
+                  gradient: Gradient {
+                    GradientStop { position: 0.00; color: "#ff2244" }
+                    GradientStop { position: 0.16; color: "#ffee33" }
+                    GradientStop { position: 0.33; color: "#33dd66" }
+                    GradientStop { position: 0.50; color: "#22ccff" }
+                    GradientStop { position: 0.67; color: "#2299ff" }
+                    GradientStop { position: 0.83; color: "#aa66ff" }
+                    GradientStop { position: 1.00; color: "#ff2244" }
                   }
+                }
 
-                  Text {
-                    anchors.top: swatch.bottom
-                    anchors.topMargin: Style.space(3)
-                    anchors.left: parent.left
-                    anchors.right: parent.right
-                    text: modelData.label
-                    color: root.contentForeground
-                    font.family: root.contentFontFamily
-                    font.pixelSize: Style.font.caption
-                    font.bold: parent.selected
-                    horizontalAlignment: Text.AlignHCenter
-                    elide: Text.ElideRight
-                  }
-
-                  MouseArea {
-                    id: swatchMouse
-                    anchors.fill: parent
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: root.applyAuraColor(modelData.value)
-                  }
-
-                  ToolTip {
-                    visible: swatchMouse.containsMouse
-                    text: modelData.label + "  (#" + modelData.value + ")"
-                    delay: 350
-                  }
+                handle: Rectangle {
+                  x: hueSlider.leftPadding + hueSlider.visualPosition * (hueSlider.availableWidth - width)
+                  y: hueSlider.topPadding + hueSlider.availableHeight / 2 - height / 2
+                  width: Style.space(18)
+                  height: width
+                  radius: width / 2
+                  color: "#" + root.hueToColor(hueSlider.value)
+                  border.width: Style.normalBorderWidth
+                  border.color: root.contentForeground
                 }
               }
             }
@@ -428,24 +443,24 @@ Panel {
             id: advancedControls
             visible: root.advancedOpen
             width: parent.width
-            spacing: Style.space(14)
+            spacing: Style.space(8)
 
             PanelSeparator { foreground: root.contentForeground }
 
-            Column {
+            PanelSectionHeader {
+              text: "ADVANCED"
+              foreground: root.contentForeground
+              fontFamily: root.contentFontFamily
+            }
+
+            Row {
               width: parent.width
               spacing: Style.space(8)
 
-              PanelSectionHeader {
-                text: "AURA EFFECTS & CUSTOM COLOR"
-                foreground: root.contentForeground
-                fontFamily: root.contentFontFamily
-              }
-
               Dropdown {
                 id: auraModeDropdown
-                width: parent.width
-                label: "EFFECT"
+                width: (parent.width - parent.spacing) * 0.48
+                label: "AURA"
                 value: root.auraMode
                 options: root.auraModes
                 foreground: root.contentForeground
@@ -453,128 +468,59 @@ Panel {
                 onChanged: root.applyAuraMode(value)
               }
 
-              Row {
-                width: parent.width
-                spacing: Style.space(8)
+              Dropdown {
+                id: slashModeDropdown
+                width: (parent.width - parent.spacing) * 0.52
+                label: "SLASH"
+                value: root.slashMode
+                options: root.slashModes
+                foreground: root.contentForeground
+                fontFamily: root.contentFontFamily
+                onChanged: root.applySlashMode(value)
+              }
+            }
 
-                Rectangle {
-                  id: customColorPreview
-                  width: Style.space(34)
-                  height: Style.space(34)
-                  radius: Style.cornerRadius
-                  anchors.verticalCenter: parent.verticalCenter
-                  color: "#" + root.selectedAuraColor
-                  border.width: Style.normalBorderWidth
-                  border.color: Qt.rgba(root.contentForeground.r, root.contentForeground.g, root.contentForeground.b, 0.45)
-                }
+            Row {
+              width: parent.width
+              spacing: Style.space(8)
 
-                TextField {
-                  id: auraHexField
-                  width: parent.width - customColorPreview.width - applyColorButton.width - parent.spacing * 2
-                  text: "#" + root.selectedAuraColor
-                  placeholderText: "#RRGGBB"
-                  foreground: root.contentForeground
-                  onAccepted: root.applyAuraColor(text)
-                }
-
-                Button {
-                  id: applyColorButton
-                  width: Style.space(82)
-                  text: "SET"
-                  fontSize: Style.font.caption
-                  foreground: root.contentForeground
-                  fontFamily: root.contentFontFamily
-                  horizontalPadding: Style.spacing.controlPaddingX
-                  verticalPadding: Style.spacing.controlPaddingY
-                  bordered: true
-                  onClicked: root.applyAuraColor(auraHexField.text)
-                }
+              Dropdown {
+                id: slashBrightnessDropdown
+                width: (parent.width - parent.spacing * 2) / 3
+                label: "BRIGHT"
+                value: root.slashBrightness
+                options: root.slashBrightnessLevels
+                foreground: root.contentForeground
+                fontFamily: root.contentFontFamily
+                onChanged: root.applySlashBrightness(value)
               }
 
               Button {
-                width: parent.width
-                text: "NEXT EFFECT"
+                width: (parent.width - parent.spacing * 2) / 3
+                text: "ON"
                 fontSize: Style.font.caption
                 foreground: root.contentForeground
                 fontFamily: root.contentFontFamily
                 horizontalPadding: Style.spacing.controlPaddingX
                 verticalPadding: Style.spacing.controlPaddingY
                 bordered: true
-                onClicked: root.runAction(["aura-next"])
+                active: root.slashEnabled === "true"
+                onClicked: root.runAction(["slash", "on"])
               }
-            }
 
-            PanelSeparator { foreground: root.contentForeground }
-
-            Column {
-              width: parent.width
-              spacing: Style.space(8)
-
-              PanelSectionHeader {
-                text: "SLASH LIGHTBAR"
+              Button {
+                width: (parent.width - parent.spacing * 2) / 3
+                text: "OFF"
+                fontSize: Style.font.caption
                 foreground: root.contentForeground
                 fontFamily: root.contentFontFamily
-              }
-
-              Row {
-                width: parent.width
-                spacing: Style.space(8)
-
-                Dropdown {
-                  id: slashModeDropdown
-                  width: (parent.width - parent.spacing) * 0.62
-                  label: "MODE"
-                  value: root.slashMode
-                  options: root.slashModes
-                  foreground: root.contentForeground
-                  fontFamily: root.contentFontFamily
-                  onChanged: root.applySlashMode(value)
-                }
-
-                Dropdown {
-                  id: slashBrightnessDropdown
-                  width: (parent.width - parent.spacing) * 0.38
-                  label: "BRIGHTNESS"
-                  value: root.slashBrightness
-                  options: root.slashBrightnessLevels
-                  foreground: root.contentForeground
-                  fontFamily: root.contentFontFamily
-                  onChanged: root.applySlashBrightness(value)
-                }
-              }
-
-              Row {
-                width: parent.width
-                spacing: Style.space(8)
-
-                Button {
-                  width: (parent.width - parent.spacing) / 2
-                  text: "SLASH ON"
-                  fontSize: Style.font.caption
-                  foreground: root.contentForeground
-                  fontFamily: root.contentFontFamily
-                  horizontalPadding: Style.spacing.controlPaddingX
-                  verticalPadding: Style.spacing.controlPaddingY
-                  bordered: true
-                  active: root.slashEnabled === "true"
-                  onClicked: root.runAction(["slash", "on"])
-                }
-                Button {
-                  width: (parent.width - parent.spacing) / 2
-                  text: "SLASH OFF"
-                  fontSize: Style.font.caption
-                  foreground: root.contentForeground
-                  fontFamily: root.contentFontFamily
-                  horizontalPadding: Style.spacing.controlPaddingX
-                  verticalPadding: Style.spacing.controlPaddingY
-                  bordered: true
-                  active: root.slashEnabled === "false"
-                  onClicked: root.runAction(["slash", "off"])
-                }
+                horizontalPadding: Style.spacing.controlPaddingX
+                verticalPadding: Style.spacing.controlPaddingY
+                bordered: true
+                active: root.slashEnabled === "false"
+                onClicked: root.runAction(["slash", "off"])
               }
             }
-
-            PanelSeparator { foreground: root.contentForeground }
 
             Column {
               width: parent.width
@@ -609,18 +555,6 @@ Panel {
                   }
                 }
               }
-            }
-
-            Button {
-              width: parent.width
-              text: "REFRESH STATUS"
-              fontSize: Style.font.bodySmall
-              foreground: root.contentForeground
-              fontFamily: root.contentFontFamily
-              horizontalPadding: Style.spacing.controlPaddingX
-              verticalPadding: Style.spacing.controlPaddingY
-              bordered: true
-              onClicked: root.refresh()
             }
           }
         }

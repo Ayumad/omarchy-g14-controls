@@ -3,23 +3,22 @@
 Native Omarchy bar controls for ASUS ROG Zephyrus G14 laptops using the
 supported `asusctl`/`asusd` stack. The bar widget shows the active power
 profile, graphics mode, NVIDIA runtime state, and keyboard backlight level.
-The compact bar presentation uses G14, profile, and GPU glyphs; its tooltip
-retains the complete readable state. Click it (or press the configured ROG
-key) to open a Quickshell panel.
+The compact bar presentation separates the G14, profile, and GPU glyphs, each
+with a focused tooltip. Click any glyph (or press the configured ROG key) to
+open a Quickshell panel.
 
 ## Features
 
 - Quiet, Balanced, and Performance profiles
 - Keyboard backlight off/low/medium/high
-- Aura effect selector, visual color swatches, custom `#RRGGBB`, and next effect
+- Visual hue-gradient keyboard color selector and Aura effect selector
 - Slash LED on/off, all modes exposed by the G14 firmware, and brightness
 - Integrated, Hybrid, and Ultimate graphics modes
 - Optional airplane-mode toggle through `rfkill`
 
-The default panel is deliberately compact: profile, keyboard-backlight, and
-keyboard-color controls are always visible. Select **Show advanced controls**
-for Aura effects, custom RGB input, Slash controls, graphics mode, and manual
-status refresh.
+The default panel is deliberately compact: profile, keyboard-backlight, and a
+visual keyboard-color slider are always visible. **Advanced controls** expands
+one short section for Aura effects, Slash controls, and graphics mode.
 
 Graphics mode changes are deliberately manual and require a reboot. The
 plugin never switches graphics mode automatically and refuses to schedule a
