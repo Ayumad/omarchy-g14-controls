@@ -21,6 +21,12 @@ BarWidget {
   property int refreshIntervalSec: Number(setting("refreshIntervalSec", 10))
   readonly property bool opened: panelLoader.item ? panelLoader.item.opened === true : false
 
+  // The shell's default open-panel mark belongs to a bar module, while this
+  // module contains three independent glyphs. Keep that group-level mark at
+  // zero size and paint the active glyph's mark locally below.
+  readonly property real openPanelIndicatorWidth: 0.1
+  readonly property real openPanelIndicatorHeight: 0.1
+
   // Each state gets its own compact, directly hoverable glyph.
   implicitWidth: root.vertical ? root.barSize : glyphRow.implicitWidth
   implicitHeight: root.barSize
@@ -94,6 +100,10 @@ BarWidget {
     if (root.runtime === "suspended") return name + " · " + mode + " · asleep"
     if (root.runtime) return name + " · " + mode + " · " + root.runtime
     return name + " · " + mode
+  }
+
+  function glyphIsActive(button) {
+    return root.opened && root.panelAnchor === button
   }
 
   function runAction(args) {
@@ -207,6 +217,8 @@ BarWidget {
       }
       tooltipText: "G14 controls"
       onPressed: function(mouseButton) { root.handleGlyphPress(mouseButton, "all", deviceButton) }
+
+      ActiveGlyphIndicator { active: root.glyphIsActive(deviceButton) }
     }
 
     BarIconButton {
@@ -237,6 +249,8 @@ BarWidget {
       }
       tooltipText: root.profileTooltip()
       onPressed: function(mouseButton) { root.handleGlyphPress(mouseButton, "profile", profileButton) }
+
+      ActiveGlyphIndicator { active: root.glyphIsActive(profileButton) }
     }
 
     BarIconButton {
@@ -245,6 +259,26 @@ BarWidget {
       text: root.gpuGlyph()
       tooltipText: root.graphicsTooltip()
       onPressed: function(mouseButton) { root.handleGlyphPress(mouseButton, "graphics", gpuButton) }
+
+      ActiveGlyphIndicator { active: root.glyphIsActive(gpuButton) }
+    }
+  }
+
+  component ActiveGlyphIndicator: Rectangle {
+    property bool active: false
+
+    anchors.horizontalCenter: parent.horizontalCenter
+    anchors.bottom: parent.bottom
+    anchors.bottomMargin: Style.space(2)
+    width: Math.max(Style.space(10), Math.round(parent.width * 0.55))
+    height: Style.space(2)
+    radius: height / 2
+    color: Color.accent
+    opacity: active ? 0.9 : 0.0
+    z: 1
+
+    Behavior on opacity {
+      NumberAnimation { duration: 120; easing.type: Easing.OutCubic }
     }
   }
 

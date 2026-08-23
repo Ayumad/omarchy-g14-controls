@@ -327,12 +327,14 @@ Panel {
               width: parent.width
               spacing: Style.space(6)
 
+              readonly property int columns: root.view === "profile" ? 2 : 4
+
               Repeater {
                 model: ["Quiet", "Balanced", "Performance", "Adaptive"]
 
                 Button {
                   required property string modelData
-                  width: (profileFlow.width - profileFlow.spacing * 3) / 4
+                  width: (profileFlow.width - profileFlow.spacing * (profileFlow.columns - 1)) / profileFlow.columns
                   text: modelData
                   fontSize: Style.font.bodySmall
                   foreground: root.contentForeground
