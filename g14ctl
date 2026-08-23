@@ -41,6 +41,13 @@ notify_profile() {
   fi
 }
 
+refresh_profile_widget() {
+  local profile="${1:-}"
+  command -v omarchy-shell >/dev/null 2>&1 \
+    && omarchy-shell -q ayumad.g14-controls profileChanged "$profile" >/dev/null 2>&1 \
+    || true
+}
+
 die() {
   printf 'g14ctl: %s\n' "$*" >&2
   exit 2
@@ -257,25 +264,29 @@ status_json() {
 }
 
 set_profile() {
-  local profile="${1:-}"
+  local profile="${1:-}" applied_profile=""
   case "$profile" in
     quiet|Quiet) profile="Quiet" ;;
     balanced|Balanced) profile="Balanced" ;;
     performance|Performance) profile="Performance" ;;
     next|cycle)
       "$asusctl_bin" profile next
-      notify_profile "Profile: $(profile_name)"
+      applied_profile=$(profile_name)
+      refresh_profile_widget "$applied_profile"
+      notify_profile "Profile: $applied_profile"
       return
       ;;
     adaptive)
       "$asusctl_bin" profile set --ac Balanced
       "$asusctl_bin" profile set --battery Quiet
+      refresh_profile_widget "$(profile_name)"
       notify_profile "Adaptive profiles: AC Balanced / battery Quiet"
       return
       ;;
     *) die "profile must be quiet, balanced, performance, next, or adaptive" ;;
   esac
   "$asusctl_bin" profile set "$profile"
+  refresh_profile_widget "$profile"
   notify_profile "Profile: $profile"
 }
 

@@ -126,6 +126,11 @@ BarWidget {
   IpcHandler {
     target: "ayumad.g14-controls"
 
+    function refresh(): void { root.refresh() }
+    function profileChanged(profileName: string): void {
+      if (profileName) root.profile = profileName
+      root.refresh()
+    }
     function open(): void { root.open() }
     function close(): void { root.close() }
     function show(): void { root.open() }
