@@ -969,6 +969,7 @@ Panel {
 
               Button {
                 id: colorLockButton
+                width: (parent.width - parent.spacing * 2) / 3
                 text: root.auraLocked ? "COLOR LOCKED" : "LOCK COLOR"
                 tooltipText: root.auraLocked
                   ? "Keyboard color lock is on — click to turn it off"
@@ -986,6 +987,7 @@ Panel {
 
               Button {
                 id: captureHotkeysButton
+                width: (parent.width - parent.spacing * 2) / 3
                 text: "CAPTURE KEYS"
                 tooltipText: "Open wev to identify your physical G14 key symbols"
                 fontSize: Style.font.caption
@@ -1000,6 +1002,7 @@ Panel {
 
               Button {
                 id: setupHotkeysButton
+                width: (parent.width - parent.spacing * 2) / 3
                 text: "SET UP HOTKEYS"
                 tooltipText: "Guided, opt-in G14 hotkey setup with a backup and confirmation"
                 fontSize: Style.font.caption
