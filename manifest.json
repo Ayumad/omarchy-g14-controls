@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "id": "ayumad.g14-controls",
+  "name": "G14 Controls",
+  "version": "1.0.0",
+  "author": "ayumad",
+  "license": "MIT",
+  "description": "Native Omarchy controls for ASUS G14 profiles, Aura, keyboard lighting, Slash, and graphics mode.",
+  "kinds": ["bar-widget"],
+  "entryPoints": {"barWidget": "BarWidget.qml"},
+  "barWidget": {
+    "displayName": "G14 Controls",
+    "description": "Profile and graphics status; left-click opens the native G14 controls popup, right-click cycles profiles.",
+    "category": "System",
+    "defaultSection": "right",
+    "allowMultiple": false,
+    "defaults": {"refreshIntervalSec": 10},
+    "schema": [
+      {"key":"refreshIntervalSec","type":"integer","label":"Refresh interval (seconds)","min":5,"max":300,"step":5,"defaultValue":10}
+    ]
+  }
+}

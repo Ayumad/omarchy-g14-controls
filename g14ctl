@@ -1,0 +1,204 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Allowlisted ASUS controller used by the G14 Controls Omarchy plugin.
+# It talks to asusd through asusctl; no root privileges are requested here.
+
+notify() {
+  if command -v omarchy-notification-send >/dev/null 2>&1; then
+    omarchy-notification-send -g  "G14" "$*" >/dev/null 2>&1 || true
+  elif command -v notify-send >/dev/null 2>&1; then
+    notify-send "G14" "$*" >/dev/null 2>&1 || true
+  fi
+}
+
+die() {
+  printf 'g14ctl: %s\n' "$*" >&2
+  exit 2
+}
+
+asusctl_bin="${ASUSCTL_BIN:-$(command -v asusctl || true)}"
+[[ -x "$asusctl_bin" ]] || die "asusctl is not installed or not on PATH"
+command -v jq >/dev/null 2>&1 || die "jq is required for status output"
+
+read_value() {
+  local path="$1"
+  if [[ -r "$path" ]]; then
+    tr -d '[:space:]' < "$path"
+  else
+    printf '?'
+  fi
+}
+
+sysfs_value() {
+  local name="$1" path
+  for path in \
+    "/sys/devices/platform/asus-nb-wmi/$name" \
+    "/sys/devices/platform/asus-wmi/$name"; do
+    if [[ -r "$path" ]]; then
+      tr -d '[:space:]' < "$path"
+      return
+    fi
+  done
+  printf '?'
+}
+
+gpu_mode() {
+  local disabled mux
+  disabled=$(sysfs_value dgpu_disable)
+  mux=$(sysfs_value gpu_mux_mode)
+  if [[ "$disabled" == 1 ]]; then
+    printf 'integrated'
+  elif [[ "$mux" == 0 ]]; then
+    printf 'ultimate'
+  elif [[ "$mux" == 1 ]]; then
+    printf 'hybrid'
+  else
+    printf 'unknown'
+  fi
+}
+
+profile_name() {
+  "$asusctl_bin" profile get 2>/dev/null \
+    | sed -n 's/^Active profile:[[:space:]]*//p' \
+    | head -n1 \
+    || true
+}
+
+keyboard_level() {
+  local output level
+  output=$("$asusctl_bin" leds get 2>/dev/null || true)
+  level=$(printf '%s\n' "$output" | sed -n 's/.*brightness:[[:space:]]*//Ip' | tail -n1)
+  if [[ -n "$level" ]]; then
+    printf '%s' "$level"
+  else
+    printf '%s\n' "$output" | tail -n1 | sed -n 's/.*:[[:space:]]*//p' | sed 's/[[:space:]]*$//'
+  fi
+}
+
+nvidia_runtime() {
+  local device vendor
+  for device in /sys/bus/pci/devices/*; do
+    [[ -r "$device/vendor" ]] || continue
+    vendor=$(tr -d '[:space:]' < "$device/vendor")
+    [[ "$vendor" == 0x10de ]] || continue
+    read_value "$device/power/runtime_status"
+    return
+  done
+  printf 'unknown'
+}
+
+status_json() {
+  local profile mode disabled mux runtime keyboard
+  profile=$(profile_name)
+  mode=$(gpu_mode)
+  disabled=$(sysfs_value dgpu_disable)
+  mux=$(sysfs_value gpu_mux_mode)
+  runtime=$(nvidia_runtime)
+  keyboard=$(keyboard_level)
+  jq -cn \
+    --arg profile "$profile" \
+    --arg mode "$mode" \
+    --arg disabled "$disabled" \
+    --arg mux "$mux" \
+    --arg runtime "$runtime" \
+    --arg keyboard "$keyboard" \
+    '{profile:$profile,gpu_mode:$mode,dgpu_disable:$disabled,gpu_mux_mode:$mux,nvidia_runtime:$runtime,keyboard_brightness:$keyboard}'
+}
+
+set_profile() {
+  local profile="${1:-}"
+  case "$profile" in
+    quiet|Quiet) profile="Quiet" ;;
+    balanced|Balanced) profile="Balanced" ;;
+    performance|Performance) profile="Performance" ;;
+    next|cycle)
+      "$asusctl_bin" profile next
+      notify "Profile: $(profile_name)"
+      return
+      ;;
+    adaptive)
+      "$asusctl_bin" profile set --ac Balanced
+      "$asusctl_bin" profile set --battery Quiet
+      notify "Adaptive profiles: AC Balanced / battery Quiet"
+      return
+      ;;
+    *) die "profile must be quiet, balanced, performance, next, or adaptive" ;;
+  esac
+  "$asusctl_bin" profile set "$profile"
+  notify "Profile: $profile"
+}
+
+set_graphics() {
+  local requested="${1:-}" disabled mux
+  case "$requested" in
+    integrated) disabled=1; mux=1 ;;
+    hybrid) disabled=0; mux=1 ;;
+    ultimate|discrete) disabled=0; mux=0; requested=ultimate ;;
+    *) die "graphics must be integrated, hybrid, or ultimate" ;;
+  esac
+  if command -v nvidia-smi >/dev/null 2>&1 \
+    && nvidia-smi --query-compute-apps=pid --format=csv,noheader 2>/dev/null | grep -q '[0-9]'; then
+    die "NVIDIA processes are active; close them before scheduling a GPU mode change"
+  fi
+  "$asusctl_bin" armoury set dgpu_disable "$disabled"
+  "$asusctl_bin" armoury set gpu_mux_mode "$mux"
+  notify "GPU mode scheduled: $requested (reboot required)"
+}
+
+set_keyboard() {
+  case "${1:-}" in
+    off|low|med|high) "$asusctl_bin" leds set "$1" ;;
+    up|cycle) "$asusctl_bin" leds next ;;
+    down) "$asusctl_bin" leds prev ;;
+    *) die "keyboard level must be off, low, med, high, up, down, or cycle" ;;
+  esac
+  notify "Keyboard backlight: $(keyboard_level)"
+}
+
+toggle_airplane() {
+  command -v rfkill >/dev/null 2>&1 || die "rfkill is not installed"
+  local soft_blocked
+  soft_blocked=$(rfkill list 2>/dev/null | awk -F': ' '/Soft blocked:/ {print $2}' | sort -u | head -n1)
+  if [[ "$soft_blocked" == yes ]]; then
+    rfkill unblock all
+    notify "Airplane mode: off"
+  else
+    rfkill block all
+    notify "Airplane mode: on"
+  fi
+}
+
+open_gui() {
+  command -v rog-control-center >/dev/null 2>&1 || die "rog-control-center is not installed"
+  uwsm-app -- rog-control-center >/dev/null 2>&1 &
+}
+
+case "${1:-status}" in
+  status) status_json ;;
+  profile) set_profile "${2:-}" ;;
+  graphics|gpu) set_graphics "${2:-}" ;;
+  keyboard|leds) set_keyboard "${2:-}" ;;
+  gui|open-gui) open_gui ;;
+  airplane|wireless) toggle_airplane ;;
+  aura-static)
+    [[ "${2:-}" =~ ^[0-9A-Fa-f]{6}$ ]] || die "aura-static requires a 6-digit RGB value, e.g. 33ccff"
+    "$asusctl_bin" aura effect static --colour "$2"
+    notify "Keyboard Aura: #$2"
+    ;;
+  aura-next)
+    "$asusctl_bin" aura effect --next-mode >/dev/null 2>&1
+    notify "Keyboard Aura: next effect"
+    ;;
+  slash)
+    case "${2:-}" in
+      on) "$asusctl_bin" slash --enable ;;
+      off) "$asusctl_bin" slash --disable ;;
+      *) die "slash must be on or off" ;;
+    esac
+    ;;
+  *)
+    printf '%s\n' 'Usage: g14ctl {status|gui|profile {adaptive|quiet|balanced|performance|next}|graphics {integrated|hybrid|ultimate}|keyboard {off|low|med|high|up|down|cycle}|aura-static RRGGBB|aura-next|airplane|slash {on|off}}' >&2
+    exit 2
+    ;;
+esac
