@@ -38,6 +38,12 @@ BarWidget {
     return root.adaptive ? "Adaptive profile · " + current + " now" : "Profile: " + current
   }
 
+  function gpuGlyph() {
+    // A full-size discrete card is visually distinct from the low-power
+    // integrated/sleeping state, even while Hybrid mode is selected.
+    return root.gpuMode.toLowerCase() === "ultimate" || root.runtime === "active" ? "󰢮" : ""
+  }
+
   function open() { if (panelLoader.item) panelLoader.item.open() }
   function close() { if (panelLoader.item) panelLoader.item.close() }
   function toggle() { if (panelLoader.item) panelLoader.item.toggle() }
@@ -211,8 +217,7 @@ BarWidget {
 
     BarIconButton {
       bar: root.bar
-      // Keep the bar legible: exact graphics mode and runtime live in the tooltip.
-      text: ""
+      text: root.gpuGlyph()
       tooltipText: root.graphicsTooltip()
       onPressed: function(mouseButton) { root.handleGlyphPress(mouseButton) }
     }
