@@ -87,7 +87,9 @@ emulated.
 
 - Omarchy Quattro and its Quickshell shell
 - `asusd` running with `asusctl` and `rog-control-center` installed
-- `jq` for status serialization and `pciutils` (`lspci`) for GPU model detection
+- `jq` for status serialization and `pciutils` (`lspci`) for GPU model detection;
+  optional `vulkan-tools` (`vulkaninfo`) provides more specific marketing names
+  when the PCI database groups multiple GPU variants under one device ID
 - ASUS WMI support for the controls exposed by the specific laptop
 - `wev` (optional, only for the G14 key-capture action)
 

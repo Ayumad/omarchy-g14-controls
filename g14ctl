@@ -352,6 +352,42 @@ dgpu_slot() {
   done
 }
 
+vulkan_gpu_name() {
+  local wanted="$1" vulkaninfo_bin name
+  vulkaninfo_bin="${VULKANINFO_BIN:-$(command -v vulkaninfo || true)}"
+  [[ -x "$vulkaninfo_bin" ]] || return 1
+
+  name=$("$vulkaninfo_bin" --summary 2>/dev/null | awk -v wanted="$wanted" '
+    function emit() {
+      if (!found && type == wanted && name != "") {
+        print name
+        found = 1
+        exit
+      }
+    }
+    /^GPU[0-9]+:$/ {
+      if (seen) emit()
+      seen = 1
+      type = ""
+      name = ""
+      next
+    }
+    seen && /^[[:space:]]*deviceType[[:space:]]*=/ {
+      type = $0
+      sub(/^[^=]*=[[:space:]]*/, "", type)
+      next
+    }
+    seen && /^[[:space:]]*deviceName[[:space:]]*=/ {
+      name = $0
+      sub(/^[^=]*=[[:space:]]*/, "", name)
+      next
+    }
+    END { if (seen && !found) emit() }
+  ' || true)
+  [[ -n "$name" ]] || return 1
+  printf '%s' "$name" | sed -E 's/[[:space:]]+\((RADV|ANV|LLVM|Mesa)[^)]*\)$//'
+}
+
 gpu_name_for_slot() {
   local slot="$1" name
   [[ -n "$slot" ]] || return 1
@@ -375,6 +411,11 @@ gpu_name_for_slot() {
 
 dgpu_name() {
   local slot name
+  name=$(vulkan_gpu_name PHYSICAL_DEVICE_TYPE_DISCRETE_GPU || true)
+  if [[ -n "$name" ]]; then
+    printf '%s' "$name"
+    return
+  fi
   slot=$(dgpu_slot || true)
   name=$(gpu_name_for_slot "$slot" || true)
   printf '%s' "${name:-Discrete GPU}"
@@ -413,6 +454,11 @@ igpu_slot() {
 
 igpu_name() {
   local slot name
+  name=$(vulkan_gpu_name PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU || true)
+  if [[ -n "$name" ]]; then
+    printf '%s' "$name"
+    return
+  fi
   slot=$(igpu_slot || true)
   name=$(gpu_name_for_slot "$slot" || true)
   printf '%s' "${name:-Integrated GPU}"
@@ -463,7 +509,20 @@ status_json() {
   runtime=$(dgpu_runtime)
   dgpu=$(dgpu_name)
   igpu=$(igpu_name)
-  gpu=$(gpu_name_for_mode "$target")
+  case "$target" in
+    integrated) gpu="$igpu" ;;
+    ultimate) gpu="$dgpu" ;;
+    hybrid)
+      if [[ "$igpu" == "Integrated GPU" ]]; then
+        gpu="$dgpu"
+      elif [[ "$dgpu" == "Discrete GPU" ]]; then
+        gpu="$igpu"
+      else
+        gpu="$igpu + $dgpu"
+      fi
+      ;;
+    *) gpu="GPU" ;;
+  esac
   keyboard=$(keyboard_level)
   aura=$(aura_mode_name)
   colour=$(aura_color)
