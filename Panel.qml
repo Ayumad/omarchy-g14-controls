@@ -22,6 +22,7 @@ Panel {
   property string gpuTargetMode: ""
   property string runtime: ""
   property string gpuName: ""
+  property string igpuName: ""
   property string dgpuName: ""
   property string keyboard: ""
   property string auraMode: "static"
@@ -168,13 +169,36 @@ Panel {
     return String(mode || "").toUpperCase()
   }
 
+  function normalizedGpuMode(mode) {
+    return String(mode || "").toLowerCase()
+  }
+
   function displayedGpuMode() {
-    return root.gpuTargetMode || root.gpuPending || root.gpuMode || "unknown"
+    return root.normalizedGpuMode(root.gpuTargetMode || root.gpuPending || root.gpuMode || "unknown")
+  }
+
+  function gpuChoiceName(mode) {
+    switch (root.normalizedGpuMode(mode)) {
+      case "integrated": return root.igpuName || "Integrated GPU"
+      case "ultimate": return root.dgpuName || "Discrete GPU"
+      case "hybrid": {
+        var names = []
+        if (root.igpuName) names.push(root.igpuName)
+        if (root.dgpuName) names.push(root.dgpuName)
+        return names.length ? names.join(" + ") : "Integrated + discrete GPUs"
+      }
+      default: return "GPU information unavailable"
+    }
+  }
+
+  function gpuChoiceTooltip(mode) {
+    return root.graphicsLabel(mode) + " · " + root.gpuChoiceName(mode)
   }
 
   function displayedGraphicsLabel() {
     var label = root.graphicsLabel(root.displayedGpuMode())
-    if (root.gpuPending && root.gpuMode && root.gpuMode !== root.gpuPending)
+    if (root.gpuPending && root.gpuMode
+        && root.normalizedGpuMode(root.gpuMode) !== root.normalizedGpuMode(root.gpuPending))
       return root.graphicsLabel(root.gpuMode) + " → " + label + " · QUEUED"
     return root.gpuPending ? label + " · QUEUED" : label
   }
@@ -371,6 +395,7 @@ Panel {
       root.gpuTargetMode = value.gpu_target_mode || root.gpuPending || root.gpuMode
       root.runtime = value.dgpu_runtime || value.nvidia_runtime || ""
       root.gpuName = value.gpu_name || ""
+      root.igpuName = value.igpu_name || ""
       root.dgpuName = value.dgpu_name || ""
       root.keyboard = value.keyboard_brightness || ""
       root.auraMode = value.aura_mode || root.auraMode
@@ -554,12 +579,17 @@ Panel {
             spacing: Style.space(18)
 
             InfoPair {
-              label: "GPU"
+              width: (parent.width - parent.spacing) * 0.68
+              label: "GPU · " + root.displayedGpuMode().toUpperCase()
                 + (root.gpuPending ? " · reboot required" : "")
                 + (root.runtime ? " · dGPU " + root.runtime : "")
               value: root.gpuName || root.dgpuName || "—"
             }
-            InfoPair { label: "Keyboard"; value: root.keyboard || "—" }
+            InfoPair {
+              width: (parent.width - parent.spacing) * 0.32
+              label: "Keyboard"
+              value: root.keyboard || "—"
+            }
           }
 
           Text {
@@ -921,18 +951,44 @@ Panel {
                   required property string modelData
                   width: (gpuFlow.width - gpuFlow.spacing * 2) / 3
                   text: modelData.toUpperCase()
+                  tooltipText: root.gpuChoiceTooltip(modelData)
                   fontSize: Style.font.bodySmall
                   foreground: root.contentForeground
                   fontFamily: root.contentFontFamily
                   horizontalPadding: Style.spacing.controlPaddingX
                   verticalPadding: Style.spacing.controlPaddingY
                   bordered: true
-                  active: (root.gpuPending || root.gpuMode) === modelData
+                  active: root.displayedGpuMode() === modelData
                   hasCursor: root.cursorActive && (root.view === "graphics"
                     ? root.cursorIndex === root.gpuChoices.indexOf(modelData)
                     : root.cursorIndex === root.gpuChoices.indexOf(modelData) + 15)
                   onClicked: root.queueGraphics(modelData)
                 }
+              }
+            }
+
+            Column {
+              width: parent.width
+              spacing: Style.space(2)
+
+              Text {
+                width: parent.width
+                text: "Integrated · " + root.gpuChoiceName("integrated")
+                color: root.contentForeground
+                opacity: 0.72
+                font.family: root.contentFontFamily
+                font.pixelSize: Style.font.caption
+                wrapMode: Text.WordWrap
+              }
+
+              Text {
+                width: parent.width
+                text: "Discrete · " + root.gpuChoiceName("ultimate")
+                color: root.contentForeground
+                opacity: 0.72
+                font.family: root.contentFontFamily
+                font.pixelSize: Style.font.caption
+                wrapMode: Text.WordWrap
               }
             }
 
@@ -1053,10 +1109,12 @@ Panel {
       font.pixelSize: Style.font.bodySmall
     }
     Text {
+      width: parent.width
       text: parent.value
       color: root.contentForeground
       font.family: root.contentFontFamily
       font.pixelSize: Style.font.bodySmall
+      elide: Text.ElideRight
     }
   }
 }

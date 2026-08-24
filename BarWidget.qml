@@ -15,6 +15,7 @@ BarWidget {
   property string gpuTargetMode: ""
   property string runtime: ""
   property string gpuName: ""
+  property string igpuName: ""
   property string dgpuName: ""
   property string keyboard: ""
   property var panelAnchor: null
@@ -108,7 +109,7 @@ BarWidget {
 
   function graphicsTooltip() {
     var mode = (root.gpuTargetMode || root.gpuPending || root.gpuMode || "unknown").toUpperCase()
-    var name = root.gpuName || root.dgpuName || "GPU"
+    var name = root.gpuName || root.dgpuName || root.igpuName || "GPU"
     var pending = root.gpuPending ? " · queued · reboot required" : ""
     var current = root.gpuMode && root.gpuMode.toUpperCase() !== mode
       ? " · running " + root.gpuMode.toUpperCase()
@@ -150,6 +151,7 @@ BarWidget {
           root.gpuTargetMode = value.gpu_target_mode || root.gpuPending || root.gpuMode
           root.runtime = value.dgpu_runtime || value.nvidia_runtime || ""
           root.gpuName = value.gpu_name || ""
+          root.igpuName = value.igpu_name || ""
           root.dgpuName = value.dgpu_name || ""
           root.keyboard = value.keyboard_brightness || ""
         } catch (error) {}

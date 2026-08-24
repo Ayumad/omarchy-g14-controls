@@ -45,8 +45,9 @@ color range rather than a UI theme color.
 - **Graphics/MUX controls** — Integrated, Hybrid, and Ultimate/dGPU modes.
   Selecting a mode queues the ASUS firmware change immediately, switches the
   bar/panel to the queued target, and highlights it until the next reboot
-  applies it; the running session is left alone. Integrated mode reports the
-  detected Radeon/Intel adapter instead of repeating the NVIDIA dGPU name.
+  applies it; the running session is left alone. The graphics panel lists the
+  exact integrated and discrete adapters reported by `lspci`, so model names
+  follow the hardware instead of being hardcoded for one G14 configuration.
 - **Hardware-key ready** — the README includes the ROG-key binding; the panel
   also supports left-click to open, right-click to cycle profiles, and
   middle-click to refresh.
