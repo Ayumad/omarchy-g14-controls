@@ -973,6 +973,7 @@ Panel {
 
               Text {
                 width: parent.width
+                visible: root.displayedGpuMode() !== "ultimate"
                 text: "Integrated · " + root.gpuChoiceName("integrated")
                 color: root.contentForeground
                 opacity: 0.72
@@ -983,6 +984,7 @@ Panel {
 
               Text {
                 width: parent.width
+                visible: root.displayedGpuMode() !== "integrated"
                 text: "Discrete · " + root.gpuChoiceName("ultimate")
                 color: root.contentForeground
                 opacity: 0.72

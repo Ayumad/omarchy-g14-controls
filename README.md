@@ -47,7 +47,9 @@ color range rather than a UI theme color.
   bar/panel to the queued target, and highlights it until the next reboot
   applies it; the running session is left alone. The graphics panel lists the
   exact integrated and discrete adapters reported by `lspci`, so model names
-  follow the hardware instead of being hardcoded for one G14 configuration.
+  follow the hardware instead of being hardcoded for one G14 configuration;
+  compact labels such as `Radeon 890M` and `RTX 5070 Ti Mobile` keep the panel
+  readable.
 - **Hardware-key ready** — the README includes the ROG-key binding; the panel
   also supports left-click to open, right-click to cycle profiles, and
   middle-click to refresh.

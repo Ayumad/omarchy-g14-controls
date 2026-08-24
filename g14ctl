@@ -409,6 +409,23 @@ gpu_name_for_slot() {
   printf '%s' "$name"
 }
 
+short_gpu_name() {
+  printf '%s' "$*" | sed -E \
+    -e 's/^Advanced Micro Devices, Inc\. \[AMD\/ATI\][[:space:]]*//' \
+    -e 's/^Advanced Micro Devices, Inc\.[[:space:]]*//' \
+    -e 's/^AMD\/ATI[[:space:]]*//' \
+    -e 's/^AMD[[:space:]]+//' \
+    -e 's/^NVIDIA Corporation[[:space:]]*//' \
+    -e 's/^NVIDIA[[:space:]]+//' \
+    -e 's/^GeForce[[:space:]]+//' \
+    -e 's/^Intel\(R\)\?[[:space:]]*//' \
+    -e 's/[[:space:]]+Laptop GPU$/ Mobile/' \
+    -e 's/[[:space:]]+Graphics$//' \
+    -e 's/[[:space:]]+/ /g' \
+    -e 's/^ //' \
+    -e 's/ $//'
+}
+
 dgpu_name() {
   local slot name
   name=$(vulkan_gpu_name PHYSICAL_DEVICE_TYPE_DISCRETE_GPU || true)
@@ -498,7 +515,7 @@ dgpu_runtime() {
 }
 
 status_json() {
-  local profile adaptive mode pending target disabled mux runtime dgpu igpu gpu keyboard aura colour aura_locked slash brightness enabled
+  local profile adaptive mode pending target disabled mux runtime dgpu_raw igpu_raw dgpu igpu gpu keyboard aura colour aura_locked slash brightness enabled
   profile=$(profile_name)
   adaptive=$(adaptive_profile_enabled)
   mode=$(gpu_mode)
@@ -507,8 +524,10 @@ status_json() {
   disabled=$(sysfs_value dgpu_disable)
   mux=$(sysfs_value gpu_mux_mode)
   runtime=$(dgpu_runtime)
-  dgpu=$(dgpu_name)
-  igpu=$(igpu_name)
+  dgpu_raw=$(dgpu_name)
+  igpu_raw=$(igpu_name)
+  dgpu=$(short_gpu_name "$dgpu_raw")
+  igpu=$(short_gpu_name "$igpu_raw")
   case "$target" in
     integrated) gpu="$igpu" ;;
     ultimate) gpu="$dgpu" ;;
